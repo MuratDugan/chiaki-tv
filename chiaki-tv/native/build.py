@@ -136,9 +136,10 @@ def build_nanopb():
         res = run([protoc, "-o" + pb, proto, "-I" + os.path.dirname(proto)])
         if res.returncode != 0:
             raise SystemExit("protoc: " + res.stdout.decode(errors="replace"))
-        env = dict(os.environ, PATH=os.path.dirname(protoc) + ":" + os.environ.get("PATH", ""))
-        res = run([os.path.join(HOST, "venv", "bin", "python"), V("nanopb", "generator", "nanopb_generator.py"),
-                   "takion.pb"], cwd=GEN, env=env)
+        # Uretici protobuf Python paketini tools/host/pylib'den alir (fetch_deps.py oraya acar).
+        env = dict(os.environ, PATH=os.path.dirname(protoc) + ":" + os.environ.get("PATH", ""),
+                   PYTHONPATH=os.path.join(HOST, "pylib"), PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION="python")
+        res = run([sys.executable, V("nanopb", "generator", "nanopb_generator.py"), "takion.pb"], cwd=GEN, env=env)
         if res.returncode != 0 or not os.path.exists(out_c):
             raise SystemExit("nanopb uretici: " + res.stdout.decode(errors="replace")[-1500:])
     return static_lib("nanopb", [V("nanopb", f) for f in ("pb_common.c", "pb_encode.c", "pb_decode.c")] + [out_c],
@@ -341,13 +342,27 @@ def apply_debug_flag():
     print("surum: %s" % ("TANILAMA (CHIAKI_TV_DEBUG=1)" if debug else "yayin"))
 
 
+def check_inputs():
+    """Eksik kaynak ya da arac varsa derleyici hatasi yerine ne yapilacagini soyler."""
+    missing = [os.path.relpath(p, ROOT) for p in
+               [V(d) for d in ("chiaki-ng", "nanopb", "jerasure", "gf-complete", "mbedtls", "opus", "json-c", "curl",
+                               "cacert.pem")] +
+               [os.path.join(HOST, "protoc", "bin", "protoc"), os.path.join(HOST, "pylib", "google", "protobuf")]
+               if not os.path.exists(p)]
+    if missing:
+        raise SystemExit("eksik: %s\nOnce calistir: python3 native/fetch_deps.py" % ", ".join(missing))
+    if not os.path.exists(CC):
+        raise SystemExit("arac zinciri yok: %s\nSamsung Pepper 47'yi kur ya da NACL_SDK_ROOT'u pepper_47 klasorune ayarla." % CC)
+
+
 def main():
-    apply_debug_flag()
     args = sys.argv[1:]
     if args[:1] == ["clean"]:
         shutil.rmtree(OUT, ignore_errors=True)
         print("temizlendi")
         return 0
+    check_inputs()
+    apply_debug_flag()
     if args[:1] == ["deps"]:
         build_deps(set(args[1:]) or None)
         return 0

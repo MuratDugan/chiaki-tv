@@ -42,8 +42,11 @@ WGT = os.path.join(BUILD, "TvTeshis.wgt")
 
 
 def ossl(*args, data=None):
-    return subprocess.run(["openssl"] + list(args), input=data, check=True,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    # Girdi verilmediyse stdin bos aygit olsun: openssl parolayi "pass:" ile alsa da konsolu acmayi dener ve
+    # stdin terminal ya da dosya degilse (ornegin bir soketse) anahtari okuyamadan cikar.
+    feed = {"input": data} if data is not None else {"stdin": subprocess.DEVNULL}
+    return subprocess.run(["openssl"] + list(args), check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          **feed).stdout
 
 
 def my_ip():
@@ -72,9 +75,11 @@ def ca_password():
 
 def ensure_certs(dist):
     """Yazar anahtari/sertifikasi uretir, dagitici anahtarini p12'den cikarir."""
+    dev = os.path.join(VENDOR, "developer")
+    if not os.path.exists(os.path.join(dev, "conf.ini")):
+        raise SystemExit("imzalama dosyalari yok: %s\nOnce calistir: python3 chiaki-tv/native/fetch_deps.py" % VENDOR)
     os.makedirs(CERTS, exist_ok=True)
     os.chmod(CERTS, 0o700)
-    dev = os.path.join(VENDOR, "developer")
     key, cer = os.path.join(CERTS, "author.key"), os.path.join(CERTS, "author.cer")
     if not (os.path.exists(cer) and os.path.getsize(cer) > 0):
         ossl("genrsa", "-out", key, "2048")
