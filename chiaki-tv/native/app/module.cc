@@ -316,6 +316,7 @@ class ChiakiInstance : public pp::Instance, public Platform {
                  "\"mbps\":%.1f,\"lost\":%d,\"rtt\":%d,\"w\":%d,\"h\":%d}",
                  shown, dropped, tm.pictures, tm.decode_avg, tm.present_avg, mbps, lost, rtt, tm.width, tm.height);
         PostMessage(pp::Var(line));
+#ifdef CHIAKI_TV_DEBUG  // saniyelik olcum satirlari yalnizca tanilama surumunde gunluge yazilir
         snprintf(line, sizeof(line), "> video: %d kare gosterildi, %d atildi (son 1 sn), %.1f Mbit/sn, kayip %d", shown,
                  dropped, mbps, lost);
         core_->Log(line);
@@ -329,6 +330,7 @@ class ChiakiInstance : public pp::Instance, public Platform {
         snprintf(more, sizeof(more), "> ana dongu: en uzun tick araligi %d ms | kol: %d guncelleme, cekirdege en gec %d ms",
                  static_cast<int>(max_tick_gap_), pad_updates_, static_cast<int>(max_pad_wait_));
         core_->Log(more);
+#endif
         max_tick_gap_ = 0;
         max_pad_wait_ = 0;
         pad_updates_ = 0;
@@ -554,6 +556,9 @@ class ChiakiInstance : public pp::Instance, public Platform {
       if (body && json_object_object_get_ex(body, "lang", NULL)) core_->SetLang(util::JStr(body, "lang"));
       if (body && json_object_object_get_ex(body, "lowLatency", NULL)) core_->SetLowLatency(util::JBool(body, "lowLatency"));
       res->body = kOk;
+#ifdef CHIAKI_TV_DEBUG
+      // Tanilama uclari yalnizca CHIAKI_TV_DEBUG=1 ile derlenen surumde vardir: ayrintili gunluk oturum verisi
+      // icerebilir, "sink" gunlugu agdaki baska bir adrese yollar, "capture"/"shot" goruntuyu disari verir.
     } else if (path == "/api/debug" && post) {
       if (body && json_object_object_get_ex(body, "verbose", NULL)) core_->SetVerbose(util::JBool(body, "verbose"));
       if (body && json_object_object_get_ex(body, "sink", NULL)) dbgsink::SetTarget(util::JStr(body, "sink"));
@@ -601,7 +606,7 @@ class ChiakiInstance : public pp::Instance, public Platform {
       res->type = "application/octet-stream";
       if (offset < capture_.size()) res->body = capture_.substr(offset, length);
       return;
-      res->body = kOk;
+#endif  // CHIAKI_TV_DEBUG
     } else if (path == "/api/logout" && post) {
       core_->Logout();
       res->body = kOk;

@@ -46,6 +46,9 @@ bool JBool(json_object* obj, const char* key, bool def = false);
 void JAdd(json_object* obj, const char* key, const std::string& value);
 void JAddInt(json_object* obj, const char* key, int64_t value);
 void JAddBool(json_object* obj, const char* key, bool value);
+// Gunluk satirindaki belirtec benzeri dizgileri ("Bearer ...", 32+ karakterlik base64/onaltilik) gizler.
+std::string Redact(const std::string& line);
+
 // Cokme raporunda is parcacigini tanimak icin kisa ad.
 void SetThreadTag(const char* tag);
 const char* ThreadTag();

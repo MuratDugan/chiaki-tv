@@ -89,6 +89,11 @@ void SetTarget(const std::string& ip_port) {
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
   bool ok = colon != std::string::npos && inet_pton(AF_INET, ip_port.substr(0, colon).c_str(), &addr.sin_addr) == 1;
+  if (ok) {
+    // Yalnizca yerel ag adresleri (10/8, 172.16/12, 192.168/16, 169.254/16, 127/8): gunluk internete gonderilemez.
+    uint32_t ip = ntohl(addr.sin_addr.s_addr);
+    ok = (ip >> 24) == 10 || (ip >> 20) == 0xAC1 || (ip >> 16) == 0xC0A8 || (ip >> 16) == 0xA9FE || (ip >> 24) == 127;
+  }
   if (ok) addr.sin_port = htons(static_cast<uint16_t>(atoi(ip_port.c_str() + colon + 1)));
   util::Lock l(&g_mu);
   g_addr = addr;

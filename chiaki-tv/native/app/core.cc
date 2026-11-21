@@ -116,7 +116,9 @@ Core::Core(Platform* platform)
   pair_code_ = util::RandomDigits(4);
   // Yalnizca bilgi, uyari ve hata: ayrintili duzeyler belirtec iceren adresleri gunluge yazabilir.
   chiaki_log_init(&log_, CHIAKI_LOG_INFO | CHIAKI_LOG_WARNING | CHIAKI_LOG_ERROR, LogCb, this);
+#ifdef CHIAKI_TV_DEBUG  // curl'un baglanti adimlari yalnizca tanilama surumunde gunluge yazilir
   psn::SetLogger([](const std::string& line, void* user) { static_cast<Core*>(user)->Log(line); }, this);
+#endif
   pthread_create(&worker_, NULL, WorkerMain, this);
 }
 
@@ -171,7 +173,8 @@ void Core::Log(const std::string& line) {
   static const int64_t start_ms = util::NowMs();
   char stamp[24];
   snprintf(stamp, sizeof(stamp), "%7.2f ", (util::NowMs() - start_ms) / 1000.0);
-  std::string cut = stamp + (line.size() > 400 ? line.substr(0, 400) : line);
+  // Belirtec benzeri dizgiler gunluge, telefondaki gunluk goruntuleyiciye ve tanilama kanalina hic girmez.
+  std::string cut = stamp + util::Redact(line.size() > 400 ? line.substr(0, 400) : line);
   {
     Lock l(&log_mu_);
     log_lines_.push_back(cut);
@@ -182,6 +185,9 @@ void Core::Log(const std::string& line) {
 }
 
 void Core::SetVerbose(bool on) {
+#ifndef CHIAKI_TV_DEBUG
+  on = false;  // ayrintili gunluk yalnizca tanilama surumunde acilabilir
+#endif
   log_.level_mask = on ? CHIAKI_LOG_ALL : (CHIAKI_LOG_INFO | CHIAKI_LOG_WARNING | CHIAKI_LOG_ERROR);
   Log(on ? L("> ayrıntılı günlük açık") : L("> ayrıntılı günlük kapalı"));
 }

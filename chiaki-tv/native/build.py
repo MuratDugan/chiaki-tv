@@ -323,7 +323,26 @@ def build_deps(only=None):
     return libs
 
 
+def apply_debug_flag():
+    """CHIAKI_TV_DEBUG=1: tanilama uclari (/api/debug, /api/dump) ve ayrintili gunluk derlenir. Varsayilan kapali.
+
+    Bayrak degisince ondan etkilenen nesneler (uygulama ve chiaki) yeniden derlenir.
+    """
+    debug = os.environ.get("CHIAKI_TV_DEBUG") == "1"
+    if debug:
+        CHIAKI_FLAGS.append("-DCHIAKI_TV_DEBUG=1")
+    stamp = os.path.join(OUT, "debug.stamp")
+    old = open(stamp).read() if os.path.exists(stamp) else ""
+    if old != str(int(debug)):
+        for name in ("app", "chiaki"):
+            shutil.rmtree(os.path.join(OUT, "obj", name), ignore_errors=True)
+        os.makedirs(OUT, exist_ok=True)
+        open(stamp, "w").write(str(int(debug)))
+    print("surum: %s" % ("TANILAMA (CHIAKI_TV_DEBUG=1)" if debug else "yayin"))
+
+
 def main():
+    apply_debug_flag()
     args = sys.argv[1:]
     if args[:1] == ["clean"]:
         shutil.rmtree(OUT, ignore_errors=True)

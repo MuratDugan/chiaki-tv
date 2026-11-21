@@ -199,6 +199,38 @@ std::string JDump(json_object* obj) {
   return out;
 }
 
+std::string Redact(const std::string& line) {
+  std::string out;
+  out.reserve(line.size());
+  size_t i = 0;
+  while (i < line.size()) {
+    if (line.compare(i, 7, "Bearer ") == 0) {  // yetki basligi: degerin tamami gizlenir
+      out += "Bearer <...>";
+      i += 7;
+      while (i < line.size() && line[i] != ' ' && line[i] != '"' && line[i] != '\n') i++;
+      continue;
+    }
+    size_t j = i;
+    while (j < line.size()) {
+      unsigned char c = static_cast<unsigned char>(line[j]);
+      bool token = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '-' ||
+                   c == '+' || c == '/' || c == '=';
+      if (!token) break;
+      j++;
+    }
+    if (j - i >= 32) {
+      out += "<...>";
+      i = j;
+    } else if (j > i) {
+      out.append(line, i, j - i);
+      i = j;
+    } else {
+      out += line[i++];
+    }
+  }
+  return out;
+}
+
 static __thread const char* t_tag = NULL;
 
 void SetThreadTag(const char* tag) { t_tag = tag; }

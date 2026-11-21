@@ -90,7 +90,7 @@ PATCHES = {
         # Tanilama: bildirim WebSocket'inin baglanti adimlari gunluge (yalnizca curl bilgi satirlari;
         # basliklar ve govde belirtec icerdiginden yazilmaz).
         _replace("static void* websocket_thread_func(void *user) {",
-                 "#ifdef CHIAKI_NACL\n"
+                 "#if defined(CHIAKI_NACL) && defined(CHIAKI_TV_DEBUG)\n"
                  "static int nacl_ws_debug(CURL *handle, curl_infotype type, char *data, size_t size, void *user)\n"
                  "{\n    (void)handle;\n    if(type != CURLINFO_TEXT)\n        return 0;\n"
                  "    /* 5 saniyede bir atilan ping satirlari gunlugu doldurmasin */\n"
@@ -101,7 +101,7 @@ PATCHES = {
                  "static void* websocket_thread_func(void *user) {"),
         _replace("    curl_easy_setopt(curl, CURLOPT_CERTINFO, 1L);\n    res = curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 2L);",
                  "    curl_easy_setopt(curl, CURLOPT_CERTINFO, 1L);\n"
-                 "#ifdef CHIAKI_NACL\n"
+                 "#if defined(CHIAKI_NACL) && defined(CHIAKI_TV_DEBUG)\n"
                  "    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, nacl_ws_debug);\n"
                  "    curl_easy_setopt(curl, CURLOPT_DEBUGDATA, session->log);\n"
                  "    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);\n"

@@ -32,7 +32,7 @@ The TV cannot take screenshots of itself. The stream pictures here use a frame r
 - No HEVC, HDR, microphone, haptics, touchpad surface or motion sensors.
 - A controller plugged into the TV itself is read through the TV's Gamepad API, but that path is untested.
 - Only PSN remote connection is implemented. Direct connection on the local network and console registration with a PIN are not.
-- The setup page and the controller are served over plain HTTP on the local network. A four-digit pairing code protects them.
+- The setup page and the controller are served over plain HTTP on the local network. A four-digit pairing code protects them, with a lockout after five wrong attempts.
 
 ## How it works
 
@@ -101,7 +101,7 @@ During a stream, L1 + R1 + L3 + R3 opens the stream menu. On the TV remote, Info
 All in `chiaki-tv/tools`:
 
 - `mockserver.py` serves the three interfaces without a TV.
-- `tvdebug.py` runs the app on the TV in debug mode, follows its log over UDP, measures latency and resolves crash addresses.
+- `tvdebug.py` runs the app on the TV in debug mode, follows its log over UDP, measures latency and resolves crash addresses. The log, capture and measurement features need a module built with `CHIAKI_TV_DEBUG=1 python3 native/build.py`; the normal build leaves those endpoints out.
 - `padtest.py` checks the controller WebSocket on the TV.
 - `screenshots.py` regenerates the pictures in `chiaki-tv/docs/screenshots`.
 - `sfiscan.py` scans the module for instructions the Native Client validator rejects.
