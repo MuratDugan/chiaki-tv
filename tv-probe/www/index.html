@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TV Teshis</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #10141a; color: #e8edf2; font-family: sans-serif; overflow: hidden; }
+  #wrap { position: absolute; left: 80px; top: 80px; }
+  h1 { font-size: 48px; margin: 0 0 24px 0; font-weight: normal; }
+  #status { font-size: 36px; color: #7fd1ff; }
+  p { font-size: 24px; color: #8b97a5; }
+  #box { position: absolute; left: 80px; bottom: 120px; width: 60px; height: 60px; background: #7fd1ff; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>TV Teşhis</h1>
+  <div id="status">Yükleniyor...</div>
+  <p>Ölçüm yaklaşık 2 dakika sürer. Bu sırada kumandaya dokunma.</p>
+</div>
+<div id="box"></div>
+<script src="/probe.js"></script>
+</body>
+</html>

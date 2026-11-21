@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F0F23">
+<title>chiaki-tv controller</title>
+<style>
+  :root {
+    --bg: #0F0F23; --surface: #17172F; --raised: #27273B; --border: #312E81; --indigo: #4338CA;
+    --indigo-hi: #A5B4FC; --ok: #22C55E; --warn: #F59E0B; --bad: #EF4444; --fg: #F8FAFC; --muted: #A9B0CC;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); min-height: 100%;
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  [hidden] { display: none !important; }
+  a { color: var(--indigo-hi); }
+  button { font: inherit; color: inherit; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 14px 16px 28px; }
+
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 44px; }
+  .bar h1 { font-size: 18px; margin: 0 auto 0 0; font-weight: 650; letter-spacing: .2px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; font-size: 14px;
+    background: var(--surface); border: 1px solid var(--border); white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); flex: none; }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.off { background: #6B7090; }
+  .btn { min-height: 44px; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--raised);
+    cursor: pointer; }
+  .btn:hover { border-color: var(--indigo-hi); }
+  .btn:focus-visible, .chip:focus-visible, input:focus-visible { outline: 3px solid var(--indigo-hi); outline-offset: 2px; }
+  .btn.primary { background: var(--indigo); border-color: var(--indigo); }
+
+  .note { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: flex-start; }
+  .note .dot { margin-top: 7px; }
+  .note b { font-weight: 650; }
+  .note .sub { color: var(--muted); font-size: 14px; }
+
+  /* ---- kol duzeni: butun olculer --u (duzen yuksekliginin %1'i) uzerinden ---- */
+  .padbox { position: relative; margin-top: 14px; width: 100%; aspect-ratio: 2.05 / 1; max-height: 78vh;
+    border-radius: 22px; border: 1px solid var(--border); overflow: hidden;
+    background: radial-gradient(120% 140% at 50% 0%, #1B1B3A 0%, #0F0F23 70%);
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  body.touch .wrap { padding: 0; max-width: none; }
+  /* Dokunmatikte durum satiri duzenin ortasindaki bos alana (PS tusunun alti) yerlesir. */
+  body.touch .bar { position: fixed; z-index: 5; top: 42%; left: 50%; transform: translateX(-50%);
+    gap: 5px; flex-direction: column; flex-wrap: nowrap; pointer-events: none; }
+  body.touch .bar > * { pointer-events: auto; }
+  body.touch .bar h1, body.touch .desk { display: none; }
+  body.touch .bar .pill, body.touch .bar .btn { font-size: 12px; padding: 4px 9px; min-height: 30px; opacity: .92; }
+  body.touch .padbox { position: fixed; margin: 0; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; width: auto;
+    top: env(safe-area-inset-top); right: env(safe-area-inset-right); bottom: env(safe-area-inset-bottom); left: env(safe-area-inset-left); }
+  /* Dokunmatikte notlar kisa sureli bildirim olarak ortada belirir (kalici olanlar disinda kendiliginden kaybolur). */
+  body.touch #notes { position: fixed; z-index: 6; left: 50%; top: 38%; transform: translateX(-50%);
+    width: min(80vw, 460px); pointer-events: none; }
+  body.touch #notes .note { margin-top: 6px; padding: 8px 12px; font-size: 13px; background: rgba(23, 23, 47, .97); }
+  body.touch #notes .note:not(:last-child), body.touch #notes .note .sub { display: none; }  /* tek satir, yalnizca en yenisi */
+  #notes a { pointer-events: auto; }
+
+  .ctl { position: absolute; display: flex; align-items: center; justify-content: center; color: var(--fg);
+    background: rgba(39, 39, 59, .72); border: calc(var(--u) * .5) solid rgba(99, 102, 241, .45);
+    font-weight: 650; font-size: calc(var(--u) * 5.2); transition: background-color .08s ease-out, border-color .08s ease-out, transform .08s ease-out; }
+  .ctl.on { background: var(--indigo); border-color: var(--indigo-hi); transform: scale(.96); }
+  .ctl svg { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .sh { border-radius: calc(var(--u) * 4); height: calc(var(--u) * 15); width: 13%; top: 4%; }
+  #c-l2 { left: 2%; } #c-l1 { left: 16.5%; } #c-r1 { right: 16.5%; } #c-r2 { right: 2%; }
+  .mid { height: calc(var(--u) * 11); top: 5%; border-radius: calc(var(--u) * 5.5); font-size: calc(var(--u) * 4); }
+  #c-share { left: 33%; width: 8%; } #c-options { right: 33%; width: 8%; } #c-touchpad { left: 42.5%; width: 15%; }
+  #c-ps { left: 50%; top: 23%; width: calc(var(--u) * 13); height: calc(var(--u) * 13); margin-left: calc(var(--u) * -6.5);
+    border-radius: 50%; font-size: calc(var(--u) * 4.2); }
+  .round { border-radius: 50%; }
+  .face { width: calc(var(--u) * 15); height: calc(var(--u) * 15); }
+  #facebox { position: absolute; right: 3.5%; top: 25%; width: calc(var(--u) * 40); height: calc(var(--u) * 40); }
+  #c-triangle { left: 50%; top: 0; margin-left: calc(var(--u) * -7.5); color: #6EE7B7; }
+  #c-cross { left: 50%; bottom: 0; margin-left: calc(var(--u) * -7.5); color: #93C5FD; }
+  #c-square { left: 0; top: 50%; margin-top: calc(var(--u) * -7.5); color: #F9A8D4; }
+  #c-circle { right: 0; top: 50%; margin-top: calc(var(--u) * -7.5); color: #FCA5A5; }
+  #dpad { position: absolute; left: 3.5%; top: 25%; width: calc(var(--u) * 40); height: calc(var(--u) * 40); border-radius: 50%;
+    background: rgba(39, 39, 59, .45); border: calc(var(--u) * .5) solid rgba(99, 102, 241, .3); }
+  #dpad .arm { position: absolute; width: 30%; height: 30%; display: flex; align-items: center; justify-content: center;
+    border-radius: 22%; background: rgba(39, 39, 59, .9); color: var(--fg); transition: background-color .08s ease-out; }
+  #dpad .arm.on { background: var(--indigo); }
+  #dpad .arm svg { width: 54%; height: 54%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  #d-up { left: 35%; top: 5%; } #d-down { left: 35%; bottom: 5%; } #d-left { left: 5%; top: 35%; } #d-right { right: 5%; top: 35%; }
+  .stick { position: absolute; bottom: 5%; width: calc(var(--u) * 38); height: calc(var(--u) * 38); border-radius: 50%;
+    background: rgba(23, 23, 47, .7); border: calc(var(--u) * .5) solid rgba(99, 102, 241, .35); }
+  #s-left { left: 25%; } #s-right { right: 25%; }
+  .knob { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%;
+    background: linear-gradient(180deg, #4F46E5, #3730A3); border: calc(var(--u) * .5) solid var(--indigo-hi);
+    display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 3.6); font-weight: 650; will-change: transform; }
+  .stick.on .knob { background: linear-gradient(180deg, #6366F1, #4338CA); }
+  .l3 { bottom: 6%; width: calc(var(--u) * 11); height: calc(var(--u) * 11); font-size: calc(var(--u) * 3.6); }
+  #c-l3 { left: 47%; margin-left: calc(var(--u) * -12.5); } #c-r3 { right: 47%; margin-right: calc(var(--u) * -12.5); }
+  #rotate { position: fixed; inset: 0; z-index: 9; background: rgba(15, 15, 35, .96); display: none; align-items: center;
+    justify-content: center; text-align: center; padding: 24px; font-size: 18px; }
+  @media (orientation: portrait) { body.touch #rotate { display: flex; } }
+
+  /* ---- masaustu: tus atamalari ---- */
+  .card { margin-top: 14px; padding: 16px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+  .card h2 { margin: 0 0 4px; font-size: 13px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--indigo-hi); }
+  .card p { margin: 4px 0 12px; color: var(--muted); font-size: 14px; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .keyrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px 6px 12px;
+    border-radius: 12px; background: var(--raised); min-height: 44px; }
+  .chip { min-width: 84px; min-height: 34px; padding: 4px 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg);
+    font: 600 13px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
+  .chip.wait { border-color: var(--warn); color: var(--warn); }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .row label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+  input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--indigo); }
+  input[type=range] { accent-color: var(--indigo); }
+  @media (prefers-reduced-motion: reduce) { .ctl, #dpad .arm { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <h1 data-i18n="title">chiaki-tv controller</h1>
+    <div class="pill" role="status" aria-live="polite"><span class="dot" id="link-dot"></span><span id="link-text" data-i18n="link_connecting">Connecting</span></div>
+    <div class="pill" id="pad-pill"><span class="dot off" id="pad-dot"></span><span id="pad-text" data-i18n="pad_search">Looking for a controller</span></div>
+    <button class="btn" id="menu" type="button" data-i18n="menu_btn" data-i18n-aria="menu_aria">Menu</button>
+    <button class="btn" id="full" type="button" data-i18n="fullscreen">Full screen</button>
+    <a class="btn desk" href="/" data-i18n="setup">Setup</a>
+  </div>
+
+  <div id="notes" aria-live="polite"></div>
+
+  <div class="padbox" id="pad" aria-label="On-screen controller" data-i18n-aria="pad_screen">
+    <div class="ctl sh" id="c-l2" data-a="l2">L2</div>
+    <div class="ctl sh" id="c-l1" data-b="l1">L1</div>
+    <div class="ctl sh" id="c-r1" data-b="r1">R1</div>
+    <div class="ctl sh" id="c-r2" data-a="r2">R2</div>
+    <div class="ctl mid" id="c-share" data-b="share" aria-label="Create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+    <div class="ctl mid" id="c-touchpad" data-b="touchpad" data-i18n="touchpad">Touchpad</div>
+    <div class="ctl mid" id="c-options" data-b="options" aria-label="Options"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg></div>
+    <div class="ctl" id="c-ps" data-b="ps">PS</div>
+
+    <div id="dpad" aria-label="D-pad" data-i18n-aria="dpad">
+      <div class="arm" id="d-up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></div>
+      <div class="arm" id="d-down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div>
+      <div class="arm" id="d-left"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></div>
+      <div class="arm" id="d-right"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+    </div>
+    <div id="facebox">
+      <div class="ctl round face" id="c-triangle" data-b="triangle" aria-label="Triangle" data-i18n-aria="triangle"><svg viewBox="0 0 24 24"><path d="M12 4l9 15H3z"/></svg></div>
+      <div class="ctl round face" id="c-circle" data-b="circle" aria-label="Circle" data-i18n-aria="circle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg></div>
+      <div class="ctl round face" id="c-cross" data-b="cross" aria-label="Cross" data-i18n-aria="cross"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></div>
+      <div class="ctl round face" id="c-square" data-b="square" aria-label="Square" data-i18n-aria="square"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="1.5"/></svg></div>
+    </div>
+    <div class="stick" id="s-left" aria-label="Left stick" data-i18n-aria="stick_left"><div class="knob">L</div></div>
+    <div class="stick" id="s-right" aria-label="Right stick" data-i18n-aria="stick_right"><div class="knob">R</div></div>
+    <div class="ctl round l3" id="c-l3" data-b="l3">L3</div>
+    <div class="ctl round l3" id="c-r3" data-b="r3">R3</div>
+  </div>
+
+  <section class="card desk" id="kb-card" aria-labelledby="kb-h">
+    <h2 id="kb-h" data-i18n="kb_head">Keyboard and mouse</h2>
+    <p data-i18n="kb_help">While this tab is in front, key presses go to the TV. To change a binding, click its box, then press the new key.</p>
+    <div class="keys" id="keys"></div>
+    <div class="row">
+      <label><input type="checkbox" id="kb-on" checked> <span data-i18n="kb_on">Keyboard control on</span></label>
+      <label><input type="checkbox" id="mouse-on"> <span data-i18n="mouse_on">Use the mouse as the right stick (click the controller; Esc to exit)</span></label>
+      <label><span data-i18n="mouse_sens">Mouse sensitivity</span> <input type="range" id="mouse-sens" min="1" max="10" value="4"></label>
+      <button class="btn" id="kb-reset" type="button" data-i18n="kb_reset">Default keys</button>
+    </div>
+  </section>
+</div>
+<div id="rotate" data-i18n-html="rotate">Turn the phone sideways.<br>The controller layout is drawn for a landscape screen.</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const TOKEN_KEY = 'chiakitv.token', MAP_KEY = 'chiakitv.keymap';
+// chiaki kumanda durumundaki bit degerleri (lib/include/chiaki/controller.h)
+const BIT = { cross: 1, circle: 2, square: 4, triangle: 8, left: 16, right: 32, up: 64, down: 128, l1: 256, r1: 512,
+  l3: 1024, r3: 2048, options: 4096, share: 8192, touchpad: 16384, ps: 32768 };
+// ?touch=1 dokunmatik duzeni zorlar (tablet + fare gibi karisik cihazlar ve deneme icin).
+const isTouch = /[?&]touch=1\b/.test(location.search) ||
+  (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches);
+document.body.classList.toggle('touch', isTouch);
+
+// ---------------------------------------------------------------- dil
+// Tek dil ayari televizyonda durur; bu sayfa acilista /api/lang'e bakar (belirtec istemez). Kayit yalnizca
+// acilista yanlis dil gorunmesin diye.
+const LANG_KEY = 'chiakitv.lang';
+const I18N = {
+  en: {
+    title: 'chiaki-tv controller',
+    link_connecting: 'Connecting',
+    link_stream: 'Connected to stream',
+    link_idle: 'TV connected, no stream',
+    link_replaced: 'Another controller connected',
+    link_lost: 'Connection lost',
+    link_pair: 'Pairing required',
+    pad_search: 'Looking for a controller',
+    pad_found: '{0} detected',
+    pad_screen: 'On-screen controller',
+    pad_keyboard: 'Keyboard mode',
+    fullscreen: 'Full screen',
+    menu_btn: 'Menu',
+    menu_aria: 'Open the stream menu on the TV (same as L1 + R1 + L3 + R3)',
+    setup: 'Setup',
+    touchpad: 'Touchpad',
+    dpad: 'D-pad',
+    triangle: 'Triangle',
+    circle: 'Circle',
+    cross: 'Cross',
+    square: 'Square',
+    stick_left: 'Left stick',
+    stick_right: 'Right stick',
+    kb_head: 'Keyboard and mouse',
+    kb_help: 'While this tab is in front, key presses go to the TV. To change a binding, click its box, then press the new key.',
+    kb_on: 'Keyboard control on',
+    mouse_on: 'Use the mouse as the right stick (click the controller; Esc to exit)',
+    mouse_sens: 'Mouse sensitivity',
+    kb_reset: 'Default keys',
+    rotate: 'Turn the phone sideways.<br>The controller layout is drawn for a landscape screen.',
+    n_stream: 'No stream running',
+    n_stream_sub: 'Once the TV connects to a console, your inputs go to the game.',
+    n_replaced: 'Another device took over this controller',
+    n_replaced_sub: 'Reload the page to use it again.',
+    n_pair: 'Pair with the TV first',
+    n_pair_sub: 'Open the setup page, enter the code shown on the TV, then come back here.',
+    n_pair_open: 'Open the setup page',
+    kind_xbox: 'Xbox controller',
+    kind_ps: 'PlayStation controller',
+    kind_other: 'Controller',
+    name_touch: 'Phone (touch)',
+    name_kb: 'Browser (keyboard)',
+    n_found_sub: 'Its buttons go straight to the TV. The on-screen controller can be used too.',
+    n_found_odd: ' This controller does not report the standard layout; buttons may be shifted.',
+    n_noapi: 'This browser does not allow controller access',
+    n_noapi_sub: 'Some browsers hide controllers on unencrypted (http) pages. ',
+    n_use_screen: 'You can use the on-screen controller.',
+    n_use_kb: 'You can play with the keyboard and mouse.',
+    n_nopad: 'No controller found: {0}',
+    n_nopad_screen: 'using the on-screen controller',
+    n_nopad_kb: 'keyboard mode is on',
+    n_nopad_sub: 'Connect an Xbox or PlayStation controller to this device and press a button on it; it shows up here once detected.',
+    act_touchpad: 'Touchpad',
+    act_up: 'D-pad up',
+    act_down: 'D-pad down',
+    act_left: 'D-pad left',
+    act_right: 'D-pad right',
+    act_ls_up: 'Left stick up',
+    act_ls_down: 'Left stick down',
+    act_ls_left: 'Left stick left',
+    act_ls_right: 'Left stick right',
+    act_rs_up: 'Right stick up',
+    act_rs_down: 'Right stick down',
+    act_rs_left: 'Right stick left',
+    act_rs_right: 'Right stick right',
+    key_arrow: 'Arrow {0}',
+    key_none: '(none)',
+    key_wait: 'Press a key…',
+    key_aria: '{0} key: {1}. Click to change.',
+    n_full: 'This browser does not support full screen',
+    n_full_sub: 'Add the page to your home screen and open it from there to hide the address bar.',
+    n_sleep: 'Keep the screen on',
+    n_sleep_sub: 'Inputs stop if the phone locks or you switch to another app.',
+  },
+  tr: {
+    title: 'chiaki-tv kol',
+    link_connecting: 'Bağlanılıyor',
+    link_stream: 'Yayına bağlı',
+    link_idle: 'TV bağlı, yayın yok',
+    link_replaced: 'Başka bir kol bağlandı',
+    link_lost: 'Bağlantı koptu',
+    link_pair: 'Eşleştirme gerekli',
+    pad_search: 'Kol aranıyor',
+    pad_found: '{0} algılandı',
+    pad_screen: 'Ekran kolu',
+    pad_keyboard: 'Klavye modu',
+    fullscreen: 'Tam ekran',
+    menu_btn: 'Menü',
+    menu_aria: 'Televizyonda yayın menüsünü aç (L1 + R1 + L3 + R3 ile aynı)',
+    setup: 'Kurulum',
+    touchpad: 'Dokunmatik',
+    dpad: 'Yön tuşları',
+    triangle: 'Üçgen',
+    circle: 'Daire',
+    cross: 'Çarpı',
+    square: 'Kare',
+    stick_left: 'Sol çubuk',
+    stick_right: 'Sağ çubuk',
+    kb_head: 'Klavye ve fare',
+    kb_help: 'Bu sekme öndeyken tuşlar televizyona gider. Bir atamayı değiştirmek için kutusuna tıkla, sonra yeni tuşa bas.',
+    kb_on: 'Klavye kontrolü açık',
+    mouse_on: 'Fare sağ çubuk olsun (kola tıkla; çıkmak için Esc)',
+    mouse_sens: 'Fare hassasiyeti',
+    kb_reset: 'Varsayılan tuşlar',
+    rotate: 'Telefonu yan çevir.<br>Kol düzeni yatay ekrana göre çizilir.',
+    n_stream: 'Yayın açık değil',
+    n_stream_sub: 'Televizyonda konsola bağlanınca tuşlar oyuna gider.',
+    n_replaced: 'Bu kolun yerini başka bir cihaz aldı',
+    n_replaced_sub: 'Yeniden kullanmak için sayfayı yenile.',
+    n_pair: 'Önce televizyonla eşleş',
+    n_pair_sub: 'Kurulum sayfasını açıp televizyondaki kodu gir, sonra buraya dön.',
+    n_pair_open: 'Kurulum sayfasını aç',
+    kind_xbox: 'Xbox kolu',
+    kind_ps: 'PlayStation kolu',
+    kind_other: 'Oyun kolu',
+    name_touch: 'Telefon (dokunmatik)',
+    name_kb: 'Tarayıcı (klavye)',
+    n_found_sub: 'Koldaki tuşlar doğrudan televizyona gidiyor. Ekran kolu da kullanılabilir.',
+    n_found_odd: ' Bu kol standart düzeni bildirmiyor; tuşlar kayık olabilir.',
+    n_noapi: 'Bu tarayıcı kol erişimi vermiyor',
+    n_noapi_sub: 'Bazı tarayıcılar şifresiz (http) sayfalarda oyun kolunu gizler. ',
+    n_use_screen: 'Ekran kolunu kullanabilirsin.',
+    n_use_kb: 'Klavye ve fareyle oynayabilirsin.',
+    n_nopad: 'Kol bulunamadı: {0}',
+    n_nopad_screen: 'ekran kolu kullanılıyor',
+    n_nopad_kb: 'klavye modu açık',
+    n_nopad_sub: 'Xbox ya da PlayStation kolunu bu cihaza bağla ve üzerindeki bir tuşa bas; algılanınca burada yazar.',
+    act_touchpad: 'Dokunmatik yüzey',
+    act_up: 'Yön yukarı',
+    act_down: 'Yön aşağı',
+    act_left: 'Yön sol',
+    act_right: 'Yön sağ',
+    act_ls_up: 'Sol çubuk yukarı',
+    act_ls_down: 'Sol çubuk aşağı',
+    act_ls_left: 'Sol çubuk sol',
+    act_ls_right: 'Sol çubuk sağ',
+    act_rs_up: 'Sağ çubuk yukarı',
+    act_rs_down: 'Sağ çubuk aşağı',
+    act_rs_left: 'Sağ çubuk sol',
+    act_rs_right: 'Sağ çubuk sağ',
+    key_arrow: 'Ok {0}',
+    key_none: '(yok)',
+    key_wait: 'Tuşa bas…',
+    key_aria: '{0} tuşu: {1}. Değiştirmek için tıkla.',
+    n_full: 'Bu tarayıcı tam ekranı desteklemiyor',
+    n_full_sub: 'Sayfayı ana ekrana ekleyip oradan açarsan adres çubuğu gizlenir.',
+    n_sleep: 'Ekran açık kalsın',
+    n_sleep_sub: 'Telefon kilitlenirse ya da başka uygulamaya geçersen tuşlar durur.',
+  },
+};
+let lang = 'en';
+try { if (I18N[localStorage.getItem(LANG_KEY)]) lang = localStorage.getItem(LANG_KEY); } catch (e) {}
+
+// t('anahtar', deger0, deger1...): metindeki {0}, {1} yerlerine degerler konur.
+function t(key, ...args) {
+  let s = I18N[lang][key];
+  if (s === undefined) s = I18N.en[key];
+  if (s === undefined) return key;
+  args.forEach((v, i) => { s = s.split('{' + i + '}').join(String(v)); });
+  return s;
+}
+// Isaretli butun ogeleri gecerli dile cevirir: data-i18n (metin), data-i18n-html (satir sonu iceren metin),
+// data-i18n-aria (aria-label). Sozlukteki metinler bu dosyada sabittir; disaridan veri karismaz.
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+}
+// Bilinmeyen ya da eksik deger Ingilizce sayilir.
+function setLang(v) {
+  v = I18N[v] ? v : 'en';
+  if (v === lang) return;
+  lang = v;
+  try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+  applyI18n();
+}
+// Televizyon yanit vermezse sayfa bekletilmez: 1,5 saniyede vazgecilir, eldeki dil kalir.
+async function loadLang() {
+  const ctl = new AbortController(), kill = setTimeout(() => ctl.abort(), 1500);
+  try { const r = await fetch('/api/lang', { cache: 'no-store', signal: ctl.signal }); if (r.ok) setLang((await r.json()).lang); } catch (e) {}
+  clearTimeout(kill);
+}
+applyI18n();
+
+// Her kaynak ayri durum tutar; gonderilen durum bunlarin birlesimidir.
+const blank = () => ({ buttons: 0, l2: 0, r2: 0, lx: 0, ly: 0, rx: 0, ry: 0 });
+const src = { touch: blank(), kb: blank(), mouse: blank(), gp: blank() };
+const maxAbs = (a, b) => (Math.abs(a) >= Math.abs(b) ? a : b);
+function merged() {
+  const m = blank();
+  for (const k in src) {
+    const s = src[k];
+    m.buttons |= s.buttons; m.l2 = Math.max(m.l2, s.l2); m.r2 = Math.max(m.r2, s.r2);
+    m.lx = maxAbs(m.lx, s.lx); m.ly = maxAbs(m.ly, s.ly); m.rx = maxAbs(m.rx, s.rx); m.ry = maxAbs(m.ry, s.ry);
+  }
+  return m;
+}
+
+// ---------------------------------------------------------------- notlar (kisa bilgi satirlari)
+const notes = {}, noteTimers = {};
+function note(key, kind, title, sub) {
+  clearTimeout(noteTimers[key]);
+  if (!title) { if (notes[key]) { notes[key].remove(); delete notes[key]; } return; }
+  if (isTouch && key !== 'link') noteTimers[key] = setTimeout(() => note(key), 3500);  // kol duzenini ortmesin
+  let el = notes[key];
+  if (!el) { el = notes[key] = document.createElement('div'); el.className = 'note'; $('notes').appendChild(el); }
+  el.textContent = '';
+  const dot = document.createElement('span'); dot.className = 'dot ' + kind;
+  const box = document.createElement('div');
+  const b = document.createElement('b'); b.textContent = title; box.appendChild(b);
+  if (sub) { const s = document.createElement('div'); s.className = 'sub'; s.textContent = sub; box.appendChild(s); }
+  el.appendChild(dot); el.appendChild(box);
+}
+
+// ---------------------------------------------------------------- televizyon baglantisi
+let ws = null, ready = false, streaming = false, shownStreaming = null, rtt = null, lastSent = '', lastSendAt = 0, retry = 0,
+  gone = false;
+function setLink(kind, text) { $('link-dot').className = 'dot ' + kind; $('link-text').textContent = text; }
+function linkStatus() {
+  if (!ready) return;
+  const ms = rtt == null ? '' : ' · ' + Math.round(rtt) + ' ms';
+  setLink(streaming ? 'ok' : '', t(streaming ? 'link_stream' : 'link_idle') + ms);
+  if (streaming === shownStreaming) return;  // not yalnizca durum degisince yenilenir
+  shownStreaming = streaming;
+  if (streaming) note('stream');
+  else note('stream', '', t('n_stream'), t('n_stream_sub'));
+}
+function connect() {
+  if (document.hidden || ws) return;  // arka plandaki sekme baglanip etkin kolun yerini almasin
+  let token = '';
+  try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+  if (!token) { needPair(); return; }
+  setLink('', t('link_connecting'));
+  ws = new WebSocket('ws://' + location.host + '/ws/pad');
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'auth', token: token, name: padName() }));
+  ws.onmessage = (ev) => {
+    if (typeof ev.data !== 'string') return;
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (m.t === 'ok') { ready = true; retry = 0; streaming = !!m.streaming; lastSent = ''; linkStatus(); }
+    else if (m.t === 'pong') { rtt = performance.now() - m.n; streaming = !!m.streaming; linkStatus(); }
+    else if (m.t === 'denied') { gone = true; try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} needPair(); }
+    else if (m.t === 'replaced') { gone = true; setLink('bad', t('link_replaced'));
+      note('link', 'bad', t('n_replaced'), t('n_replaced_sub')); }
+  };
+  ws.onclose = () => {
+    ready = false; ws = null; shownStreaming = null;
+    if (gone || document.hidden) return;
+    setLink('bad', t('link_lost'));
+    setTimeout(connect, Math.min(4000, 500 * ++retry));
+  };
+  ws.onerror = () => {};
+}
+function needPair() {
+  setLink('bad', t('link_pair'));
+  note('link', 'bad', t('n_pair'), t('n_pair_sub'));
+  const a = document.createElement('a'); a.href = '/'; a.className = 'btn primary'; a.textContent = t('n_pair_open');
+  a.style.marginLeft = 'auto'; a.style.textDecoration = 'none';
+  notes.link.appendChild(a);
+}
+setInterval(() => { if (ready) ws.send(JSON.stringify({ t: 'ping', n: performance.now() })); }, 1000);
+
+const frame = new DataView(new ArrayBuffer(15));
+function flush(force) {
+  const m = merged();
+  const key = m.buttons + ',' + m.l2 + ',' + m.r2 + ',' + m.lx + ',' + m.ly + ',' + m.rx + ',' + m.ry;
+  const now = performance.now();
+  paint(m);
+  // Durum degisince hemen, degismese de 80 ms'de bir gonder: televizyon 400 ms ses gelmezse tuslari birakir.
+  if (!ready || (key === lastSent && !force && now - lastSendAt < 80)) return;
+  lastSent = key; lastSendAt = now;
+  frame.setUint8(0, 1); frame.setUint32(1, m.buttons, true); frame.setUint8(5, m.l2); frame.setUint8(6, m.r2);
+  frame.setInt16(7, m.lx, true); frame.setInt16(9, m.ly, true); frame.setInt16(11, m.rx, true); frame.setInt16(13, m.ry, true);
+  ws.send(frame.buffer);
+}
+const axis = (v) => Math.round(Math.max(-1, Math.min(1, v)) * 32767);
+
+// ---------------------------------------------------------------- cizim: birlesik durumu duzende goster
+const btnEls = {}; document.querySelectorAll('[data-b]').forEach((el) => { btnEls[el.dataset.b] = el; });
+const arms = { up: $('d-up'), down: $('d-down'), left: $('d-left'), right: $('d-right') };
+function knob(zone, x, y) {
+  const r = zone.clientWidth * 0.27;
+  zone.firstElementChild.style.transform = 'translate(' + (x / 32767 * r).toFixed(1) + 'px,' + (y / 32767 * r).toFixed(1) + 'px)';
+  zone.classList.toggle('on', x !== 0 || y !== 0);
+}
+function paint(m) {
+  for (const k in btnEls) btnEls[k].classList.toggle('on', (m.buttons & BIT[k]) !== 0);
+  for (const k in arms) arms[k].classList.toggle('on', (m.buttons & BIT[k]) !== 0);
+  $('c-l2').classList.toggle('on', m.l2 > 30); $('c-r2').classList.toggle('on', m.r2 > 30);
+  knob($('s-left'), m.lx, m.ly); knob($('s-right'), m.rx, m.ry);
+}
+function fit() { $('pad').style.setProperty('--u', ($('pad').clientHeight / 100) + 'px'); }
+addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 250)); fit();
+
+// ---------------------------------------------------------------- dokunmatik / isaretci
+const buzz = () => { if (navigator.vibrate) navigator.vibrate(8); };
+function hold(el, down, up) {  // parmak kaysa da birakilana kadar basili kalir
+  const ids = new Set();
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (x) {}
+    if (!ids.size) { down(); buzz(); } ids.add(e.pointerId); flush(true); });
+  const end = (e) => { if (!ids.delete(e.pointerId)) return; if (!ids.size) up(); flush(true); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+}
+document.querySelectorAll('[data-b]').forEach((el) => {
+  const bit = BIT[el.dataset.b];
+  hold(el, () => { src.touch.buttons |= bit; }, () => { src.touch.buttons &= ~bit; });
+});
+document.querySelectorAll('[data-a]').forEach((el) => {
+  const k = el.dataset.a;
+  hold(el, () => { src.touch[k] = 255; }, () => { src.touch[k] = 0; });
+});
+function zone(el, move, release) {  // tek parmagi izleyen alan (yon tuslari ve cubuklar)
+  let id = null;
+  const at = (e) => { const r = el.getBoundingClientRect();
+    move((e.clientX - r.left - r.width / 2) / (r.width / 2), (e.clientY - r.top - r.height / 2) / (r.height / 2)); flush(true); };
+  el.addEventListener('pointerdown', (e) => { if (id !== null) return; e.preventDefault(); id = e.pointerId;
+    try { el.setPointerCapture(id); } catch (x) {} buzz(); at(e); });
+  el.addEventListener('pointermove', (e) => { if (e.pointerId === id) at(e); });
+  const end = (e) => { if (e.pointerId !== id) return; id = null; release(); flush(true); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+}
+const DPAD = BIT.up | BIT.down | BIT.left | BIT.right;
+zone($('dpad'), (x, y) => {
+  let b = 0;
+  if (Math.hypot(x, y) > 0.22) {  // sekiz yon: capraz basislar iki tusu birden verir
+    const a = Math.atan2(y, x) * 180 / Math.PI;
+    if (a > -157.5 && a < -22.5) b |= BIT.up;
+    if (a > 22.5 && a < 157.5) b |= BIT.down;
+    if (a > 112.5 || a < -112.5) b |= BIT.left;
+    if (a > -67.5 && a < 67.5) b |= BIT.right;
+  }
+  src.touch.buttons = (src.touch.buttons & ~DPAD) | b;
+}, () => { src.touch.buttons &= ~DPAD; });
+function stickZone(el, kx, ky) {
+  zone(el, (x, y) => {
+    x /= 0.6; y /= 0.6;  // topuz alanin %60'inda tam degere ulasir
+    const d = Math.hypot(x, y); if (d > 1) { x /= d; y /= d; }
+    src.touch[kx] = axis(x); src.touch[ky] = axis(y);
+  }, () => { src.touch[kx] = 0; src.touch[ky] = 0; });
+}
+stickZone($('s-left'), 'lx', 'ly'); stickZone($('s-right'), 'rx', 'ry');
+$('pad').addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ---------------------------------------------------------------- gercek oyun kolu (Gamepad API)
+const GP_BTN = ['cross', 'circle', 'square', 'triangle', 'l1', 'r1', null, null, 'share', 'options', 'l3', 'r3', 'up', 'down',
+  'left', 'right', 'ps', 'touchpad'];
+let gpName = '';
+const dead = (v) => (Math.abs(v) < 0.08 ? 0 : v);
+function padKind(id) {
+  if (/xbox|045e/i.test(id)) return t('kind_xbox');
+  if (/dualsense|0ce6|0df2/i.test(id)) return 'DualSense';
+  if (/dualshock|054c|wireless controller/i.test(id)) return t('kind_ps');
+  return t('kind_other');
+}
+function padName() { return gpName || t(isTouch ? 'name_touch' : 'name_kb'); }
+function pollPad() {
+  let pad = null;
+  if (navigator.getGamepads) {
+    const list = navigator.getGamepads();
+    for (let i = 0; i < list.length; i++) if (list[i] && list[i].connected) { if (!pad || list[i].mapping === 'standard') pad = list[i]; }
+  }
+  const name = pad ? padKind(pad.id) : '';
+  if (name !== gpName) {
+    gpName = name;
+    $('pad-dot').className = 'dot ' + (pad ? 'ok' : 'off');
+    $('pad-text').textContent = pad ? t('pad_found', name) : t(isTouch ? 'pad_screen' : 'pad_keyboard');
+    if (pad) note('pad', 'ok', t('pad_found', name), t('n_found_sub') +
+      (pad.mapping === 'standard' ? '' : t('n_found_odd')));
+    else padHelp();
+    if (ready) ws.send(JSON.stringify({ t: 'name', name: padName() }));
+  }
+  const s = blank();
+  if (pad) {
+    for (let i = 0; i < GP_BTN.length && i < pad.buttons.length; i++) if (GP_BTN[i] && pad.buttons[i].pressed) s.buttons |= BIT[GP_BTN[i]];
+    if (pad.buttons.length > 7) { s.l2 = Math.round(pad.buttons[6].value * 255); s.r2 = Math.round(pad.buttons[7].value * 255); }
+    if (pad.axes.length >= 4) { s.lx = axis(dead(pad.axes[0])); s.ly = axis(dead(pad.axes[1])); s.rx = axis(dead(pad.axes[2])); s.ry = axis(dead(pad.axes[3])); }
+  }
+  src.gp = s;
+}
+function padHelp() {
+  if (!navigator.getGamepads) {
+    note('pad', '', t('n_noapi'), t('n_noapi_sub') +
+      t(isTouch ? 'n_use_screen' : 'n_use_kb'));
+  } else {
+    note('pad', 'off', t('n_nopad', t(isTouch ? 'n_nopad_screen' : 'n_nopad_kb')),
+      t('n_nopad_sub'));
+  }
+}
+
+// ---------------------------------------------------------------- klavye (varsayilanlar chiaki-ng ile ayni; cubuklar WASD / IJKL)
+// Ikinci oge sozluk anahtariysa cevrilir; degilse (L1, Options...) her dilde ayni yazilir.
+const ACTIONS = [['cross', 'cross'], ['circle', 'circle'], ['square', 'square'], ['triangle', 'triangle'], ['up', 'act_up'],
+  ['down', 'act_down'], ['left', 'act_left'], ['right', 'act_right'], ['l1', 'L1'], ['r1', 'R1'], ['l2', 'L2'], ['r2', 'R2'],
+  ['l3', 'L3'], ['r3', 'R3'], ['options', 'Options'], ['share', 'Create'], ['touchpad', 'act_touchpad'], ['ps', 'PS'],
+  ['ls_up', 'act_ls_up'], ['ls_down', 'act_ls_down'], ['ls_left', 'act_ls_left'], ['ls_right', 'act_ls_right'],
+  ['rs_up', 'act_rs_up'], ['rs_down', 'act_rs_down'], ['rs_left', 'act_rs_left'], ['rs_right', 'act_rs_right']];
+const actLabel = (s) => (I18N.en[s] === undefined ? s : t(s));
+const DEFAULT_MAP = { cross: 'Enter', circle: 'Backspace', square: 'Backslash', triangle: 'KeyC', up: 'ArrowUp', down: 'ArrowDown',
+  left: 'ArrowLeft', right: 'ArrowRight', l1: 'Digit2', r1: 'Digit3', l2: 'Digit1', r2: 'Digit4', l3: 'Digit5', r3: 'Digit6',
+  options: 'KeyO', share: 'KeyF', touchpad: 'KeyT', ps: 'Escape', ls_up: 'KeyW', ls_down: 'KeyS', ls_left: 'KeyA', ls_right: 'KeyD',
+  rs_up: 'KeyI', rs_down: 'KeyK', rs_left: 'KeyJ', rs_right: 'KeyL' };
+let keymap = Object.assign({}, DEFAULT_MAP), waiting = null, justAssigned = '';
+try { const saved = JSON.parse(localStorage.getItem(MAP_KEY) || 'null');
+  if (saved) for (const a in DEFAULT_MAP) if (typeof saved[a] === 'string') keymap[a] = saved[a]; } catch (e) {}
+const held = new Set();
+const keyLabel = (code) => (code ? code.replace(/^Key|^Digit/, '').replace(/^Arrow(.*)$/, (m, d) => t('key_arrow', d)) : t('key_none'));
+function drawKeys() {
+  const box = $('keys'); box.textContent = '';
+  for (const [a, id] of ACTIONS) {
+    const label = actLabel(id);
+    const row = document.createElement('div'); row.className = 'keyrow';
+    const name = document.createElement('span'); name.textContent = label;
+    const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'chip' + (waiting === a ? ' wait' : '');
+    chip.textContent = waiting === a ? t('key_wait') : keyLabel(keymap[a]);
+    chip.setAttribute('aria-label', t('key_aria', label, keyLabel(keymap[a])));
+    chip.addEventListener('click', () => { waiting = waiting === a ? null : a; held.clear(); kbApply(); drawKeys(); });
+    row.appendChild(name); row.appendChild(chip); box.appendChild(row);
+  }
+}
+function kbApply() {
+  const s = blank(), on = (a) => held.has(keymap[a]);
+  if ($('kb-on').checked && !waiting) {
+    for (const k in BIT) if (on(k)) s.buttons |= BIT[k];
+    s.l2 = on('l2') ? 255 : 0; s.r2 = on('r2') ? 255 : 0;
+    let lx = (on('ls_right') ? 1 : 0) - (on('ls_left') ? 1 : 0), ly = (on('ls_down') ? 1 : 0) - (on('ls_up') ? 1 : 0);
+    let rx = (on('rs_right') ? 1 : 0) - (on('rs_left') ? 1 : 0), ry = (on('rs_down') ? 1 : 0) - (on('rs_up') ? 1 : 0);
+    const n = (x, y) => (x && y ? 0.7071 : 1);  // capraz itiste cubuk daire icinde kalsin
+    s.lx = axis(lx * n(lx, ly)); s.ly = axis(ly * n(lx, ly)); s.rx = axis(rx * n(rx, ry)); s.ry = axis(ry * n(rx, ry));
+  }
+  src.kb = s;
+}
+addEventListener('keydown', (e) => {
+  if (waiting) {  // atama: bu tus baska bir eylemdeyse oradan alinir
+    e.preventDefault();
+    for (const a in keymap) if (keymap[a] === e.code) keymap[a] = '';
+    keymap[waiting] = e.code; waiting = null; justAssigned = e.code;  // birakilana kadar bu tus girdi sayilmaz
+    try { localStorage.setItem(MAP_KEY, JSON.stringify(keymap)); } catch (x) {}
+    drawKeys(); return;
+  }
+  if (e.metaKey || e.code === 'MetaLeft' || e.code === 'MetaRight') {
+    // macOS, Cmd basiliyken birakilan tuslarin keyup olayini vermez: takili kalmasin diye hepsini birak.
+    if (held.size) { held.clear(); kbApply(); flush(true); }
+    return;
+  }
+  if (e.repeat || e.code === justAssigned || !$('kb-on').checked || e.ctrlKey || e.altKey) return;
+  if (locked() && e.code === 'Escape') return;  // Esc fare kilidinden cikar; PS tusu sayilmasin
+  if (Object.keys(keymap).some((a) => keymap[a] === e.code)) { e.preventDefault(); held.add(e.code); kbApply(); flush(true); }
+});
+addEventListener('keyup', (e) => {
+  if (e.code === justAssigned) justAssigned = '';
+  if (held.delete(e.code)) { kbApply(); flush(true); }
+});
+function releaseAll() { held.clear(); kbApply(); src.mouse = blank(); src.touch = blank(); flush(true); }
+addEventListener('blur', releaseAll);
+// Gizlenen sayfa baglantiyi birakir (tuslar da birakilir), yeniden gorununce baglanir.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { releaseAll(); if (ws) ws.close(); }
+  else if (!gone) connect();
+});
+$('kb-on').addEventListener('change', () => { held.clear(); kbApply(); flush(true); });
+$('kb-reset').addEventListener('click', () => { keymap = Object.assign({}, DEFAULT_MAP);
+  try { localStorage.removeItem(MAP_KEY); } catch (e) {} waiting = null; drawKeys(); });
+
+// ---------------------------------------------------------------- fare = sag cubuk (isaretci kilidiyle)
+let mdx = 0, mdy = 0;
+const locked = () => document.pointerLockElement === $('pad');
+$('pad').addEventListener('click', () => { if (!isTouch && $('mouse-on').checked && !locked() && $('pad').requestPointerLock) $('pad').requestPointerLock(); });
+document.addEventListener('mousemove', (e) => { if (locked()) { mdx += e.movementX; mdy += e.movementY; } });
+document.addEventListener('mousedown', (e) => { if (!locked()) return; if (e.button === 0) src.mouse.r2 = 255; if (e.button === 2) src.mouse.l2 = 255; flush(true); });
+document.addEventListener('mouseup', (e) => { if (e.button === 0) src.mouse.r2 = 0; if (e.button === 2) src.mouse.l2 = 0; flush(true); });
+document.addEventListener('pointerlockchange', () => { if (!locked()) { src.mouse = blank(); mdx = mdy = 0; flush(true); } });
+$('mouse-on').addEventListener('change', () => { if (!$('mouse-on').checked && locked()) document.exitPointerLock(); });
+function mouseStep() {  // kare basina fare hareketini cubuk sapmasina cevir; hareket durunca cubuk merkeze doner
+  if (!locked()) return;
+  const k = Number($('mouse-sens').value) / 60;
+  let x = mdx * k, y = mdy * k; mdx = mdy = 0;
+  const d = Math.hypot(x, y); if (d > 1) { x /= d; y /= d; }
+  src.mouse.rx = axis(src.mouse.rx / 32767 * 0.35 + x); src.mouse.ry = axis(src.mouse.ry / 32767 * 0.35 + y);
+  if (Math.abs(src.mouse.rx) < 900) src.mouse.rx = 0;
+  if (Math.abs(src.mouse.ry) < 900) src.mouse.ry = 0;
+}
+
+// ---------------------------------------------------------------- tam ekran, uyanik kalma, dongu
+// Yayin menusu: dokunmatik duzende dort tusa birden basmak zor oldugu icin ayri dugme.
+$('menu').addEventListener('click', () => { if (ready) ws.send(JSON.stringify({ t: 'menu' })); buzz(); });
+$('full').addEventListener('click', () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  else note('full', '', t('n_full'), t('n_full_sub'));
+  if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});  // yalnizca guvenli baglamda calisir
+});
+function loop() { pollPad(); mouseStep(); flush(false); requestAnimationFrame(loop); }
+// Dil ogrenildikten sonra baslar: notlar ve tus adlari dogru dilde bir kez yazilir.
+loadLang().then(() => {
+  drawKeys(); padHelp(); $('pad-text').textContent = t(isTouch ? 'pad_screen' : 'pad_keyboard');
+  if (isTouch) note('sleep', 'off', t('n_sleep'), t('n_sleep_sub'));
+  connect(); requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>

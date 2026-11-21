@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>chiaki-tv setup</title>
+<style>
+  :root {
+    --bg: #0F0F23; --surface: #17172F; --surface-2: #1F1F3A; --muted: #27273B; --border: #2F2C6E;
+    --primary: #4338CA; --primary-hover: #4F46E5; --indigo: #A5B4FC; --accent: #22C55E;
+    --fg: #F8FAFC; --fg-2: #A8B0C8; --danger: #EF4444; --danger-fg: #FCA5A5; --warn: #F59E0B;
+    --ring: 0 0 0 3px rgba(129, 140, 248, 0.65);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100dvh; color: var(--fg); background:
+      radial-gradient(700px 480px at 0% -10%, rgba(67, 56, 202, 0.38), transparent 60%), var(--bg);
+    font: 16px/1.5 Inter, -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 2px 0; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 700; }
+  h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--indigo); }
+  p { margin: 0; }
+  .sub { color: var(--fg-2); font-size: 14px; }
+  .card { background: rgba(23, 23, 47, 0.94); border: 1px solid var(--border); border-radius: 18px; padding: 18px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+          background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex: none; }
+  .dot.ok { background: var(--accent); } .dot.off { background: #6B7090; } .dot.bad { background: var(--danger); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px;
+         border-radius: 12px; border: 1px solid transparent; font: inherit; font-weight: 600; color: var(--fg);
+         cursor: pointer; text-decoration: none; touch-action: manipulation;
+         transition: background-color .18s ease-out, border-color .18s ease-out, opacity .18s ease-out, transform .12s ease-out; }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+  .btn[aria-disabled="true"] { pointer-events: none; }
+  .btn.primary { background: var(--primary); } .btn.primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .btn.ghost { background: var(--surface-2); border-color: var(--border); }
+  .btn.danger { background: rgba(239, 68, 68, 0.14); border-color: rgba(239, 68, 68, 0.55); color: var(--danger-fg); }
+  .btn.block { width: 100%; }
+  .btn.link { background: none; min-height: 44px; padding: 0 6px; color: var(--indigo); }
+  :focus-visible { outline: none; box-shadow: var(--ring); border-radius: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+  label { display: block; font-size: 14px; color: var(--fg-2); margin: 12px 0 6px; }
+  input, textarea, select { width: 100%; min-height: 48px; padding: 12px; border-radius: 12px; border: 1px solid var(--border);
+                            background: var(--surface-2); color: var(--fg); font: inherit; }
+  textarea { min-height: 96px; resize: vertical; font-size: 14px; word-break: break-all; }
+  .code { display: flex; gap: 10px; margin-top: 12px; }
+  .code input { text-align: center; font-size: 28px; font-weight: 700; height: 64px; padding: 0; font-variant-numeric: tabular-nums; }
+  .error { min-height: 20px; margin-top: 8px; font-size: 14px; color: var(--danger-fg); }
+  .steps { margin: 10px 0 0; padding-left: 20px; color: var(--fg-2); font-size: 14px; display: grid; gap: 6px; }
+  .steps b { color: var(--fg); font-weight: 600; }
+
+  .console { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; background: var(--surface-2);
+             border: 1px solid var(--border); margin-top: 10px; }
+  .console .tag { flex: none; padding: 6px 10px; border-radius: 8px; background: var(--muted); font-size: 12px; font-weight: 700; }
+  .console .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .console .grow { min-width: 0; flex: 1; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status { display: flex; gap: 12px; align-items: flex-start; }
+  .status .dot { margin-top: 7px; }
+  .status-title { font-weight: 600; }
+  .alert { margin-top: 12px; padding: 12px; border-radius: 12px; background: rgba(239, 68, 68, 0.12);
+           border: 1px solid rgba(239, 68, 68, 0.5); color: var(--danger-fg); font-size: 14px; }
+  pre { margin: 12px 0 0; max-height: 280px; overflow: auto; padding: 12px; border-radius: 12px; background: #0A0A1C;
+        border: 1px solid var(--border); font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; color: #C7CCE0;
+        white-space: pre-wrap; word-break: break-word; }
+  details summary { cursor: pointer; color: var(--fg-2); padding: 6px 0; min-height: 44px; display: flex; align-items: center; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" width="36" height="36" aria-hidden="true">
+        <rect x="2" y="2" width="60" height="60" rx="16" fill="#4338CA"/>
+        <path d="M24 20l22 12-22 12z" fill="#F8FAFC"/><circle cx="47" cy="19" r="5" fill="#22C55E"/>
+      </svg>
+      chiaki-tv
+    </div>
+    <div class="pill" role="status" aria-live="polite"><span class="dot" id="link-dot"></span><span id="link-text" data-i18n="link_connecting">Connecting</span></div>
+  </header>
+
+  <!-- 1. Eslestirme -->
+  <section class="card" id="sec-pair" hidden aria-labelledby="h-pair">
+    <h2 id="h-pair" data-i18n="pair_head">Pair with the TV</h2>
+    <p class="sub" id="pair-help" data-i18n="pair_help">Enter the four-digit code shown on the TV screen.</p>
+    <div class="code" role="group" aria-labelledby="h-pair" aria-describedby="pair-help pair-error">
+      <input inputmode="numeric" autocomplete="off" aria-label="Digit 1">
+      <input inputmode="numeric" autocomplete="off" aria-label="Digit 2">
+      <input inputmode="numeric" autocomplete="off" aria-label="Digit 3">
+      <input inputmode="numeric" autocomplete="off" aria-label="Digit 4">
+    </div>
+    <p class="error" id="pair-error" role="alert"></p>
+  </section>
+
+  <!-- Durum -->
+  <section class="card" id="sec-status" hidden aria-labelledby="h-status">
+    <h2 id="h-status" data-i18n="status_head">Status</h2>
+    <div class="status" role="status" aria-live="polite">
+      <span class="dot" id="st-dot"></span>
+      <div>
+        <div class="status-title" id="st-title">–</div>
+        <div class="sub" id="st-sub"></div>
+      </div>
+    </div>
+    <div class="alert" id="st-error" role="alert" hidden></div>
+    <a class="btn ghost" id="open-pad" href="/pad" style="display:flex;text-decoration:none;margin-top:12px;color:inherit" data-i18n="open_pad">Use this device as a controller</a>
+    <div id="pin-box" hidden>
+      <label for="pin" data-i18n="pin_label">Console login PIN</label>
+      <input id="pin" inputmode="numeric" autocomplete="off" maxlength="8" aria-describedby="pin-help">
+      <p class="sub" id="pin-help" data-i18n="pin_help">The login PIN of the user on the console.</p>
+      <div class="row"><button class="btn primary" id="btn-pin" data-i18n="pin_send">Send PIN</button></div>
+    </div>
+    <div class="row">
+      <button class="btn danger" id="btn-stop" data-i18n="disconnect" hidden>Disconnect</button>
+    </div>
+  </section>
+
+  <!-- 2. PSN -->
+  <section class="card" id="sec-psn" hidden aria-labelledby="h-psn">
+    <h2 id="h-psn" lang="en">PlayStation Network</h2>
+    <div id="psn-out">
+      <p class="sub" data-i18n="psn_note">Your password is entered only on Sony's own page; this page never sees it.</p>
+      <ol class="steps">
+        <li data-i18n-html="psn_step1"><b>Open the Sony sign-in page</b> and sign in with your account.</li>
+        <li data-i18n-html="psn_step2">When sign-in finishes, a blank page that says <b>"redirect"</b> opens. Copy the full address from the address bar.</li>
+        <li data-i18n="psn_step3">Come back here and paste the address below.</li>
+      </ol>
+      <div class="row"><a class="btn primary block" id="psn-link" target="_blank" rel="noopener" aria-disabled="true" data-i18n="psn_open">Open the Sony sign-in page</a></div>
+      <label for="redirect" data-i18n="redirect_label">Redirect address</label>
+      <textarea id="redirect" placeholder="https://remoteplay.dl.playstation.net/remoteplay/redirect?code=…" autocapitalize="off" autocomplete="off" spellcheck="false" aria-describedby="psn-error"></textarea>
+      <p class="error" id="psn-error" role="alert"></p>
+      <button class="btn primary block" id="btn-psn" data-i18n="psn_finish">Finish sign-in</button>
+    </div>
+    <div id="psn-in" hidden>
+      <div class="status"><span class="dot ok"></span><div><div class="status-title" data-i18n="psn_in">Signed in to PSN</div><div class="sub" data-i18n="psn_in_sub">The session is stored on the TV and renews automatically.</div></div></div>
+      <div class="row"><button class="btn link" id="btn-logout" data-i18n="psn_logout">Sign out</button></div>
+    </div>
+  </section>
+
+  <!-- 3. Konsollar -->
+  <section class="card" id="sec-consoles" hidden aria-labelledby="h-consoles">
+    <h2 id="h-consoles" data-i18n="consoles_head">Consoles</h2>
+    <div id="console-list"></div>
+    <p class="sub" id="console-empty" data-i18n="consoles_empty" hidden>No PS5 found for this account. Make sure the console is on or in rest mode and that Remote Play is enabled.</p>
+    <div class="row"><button class="btn ghost" id="btn-refresh" data-i18n="refresh_list">Refresh list</button></div>
+  </section>
+
+  <!-- 4. Ayarlar -->
+  <section class="card" id="sec-settings" hidden aria-labelledby="h-settings">
+    <h2 id="h-settings" data-i18n="settings_head">Video settings</h2>
+    <div class="grid2">
+      <div><label for="set-res" data-i18n="set_res">Resolution</label>
+        <select id="set-res"><option value="540">540p</option><option value="720">720p</option><option value="1080">1080p</option></select></div>
+      <div><label for="set-fps" data-i18n="set_fps">Frame rate</label>
+        <select id="set-fps"><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+    </div>
+    <label for="set-bitrate" data-i18n="set_bitrate">Bitrate</label>
+    <select id="set-bitrate" aria-describedby="set-help">
+      <option value="0">Automatic (based on resolution)</option><option value="5000">5 Mbit/s</option><option value="8000">8 Mbit/s</option>
+      <option value="10000">10 Mbit/s</option><option value="15000">15 Mbit/s</option><option value="20000">20 Mbit/s</option>
+    </select>
+    <p class="sub" id="set-help" style="margin-top:8px" data-i18n="set_help">If the picture stutters, lower the resolution or the bitrate. On this TV 1080p runs at 30 fps. Changes apply from the next connection.</p>
+    <label for="set-latency" data-i18n="set_latency">Low latency</label>
+    <select id="set-latency" aria-describedby="latency-help">
+      <option value="1" data-i18n="latency_on">On (recommended)</option><option value="0" data-i18n="latency_off">Off</option>
+    </select>
+    <p class="sub" id="latency-help" style="margin-top:8px" data-i18n="latency_help">On: the TV shows each frame about 130 ms sooner; after packet loss the picture may freeze for a moment. Off: smoother on a poor connection, but controls feel delayed.</p>
+    <label for="set-lang" data-i18n="set_lang">Language</label>
+    <select id="set-lang"><option value="en">English</option><option value="tr">Türkçe</option></select>
+  </section>
+
+  <!-- Gunluk -->
+  <section class="card" id="sec-log" hidden aria-labelledby="h-log">
+    <h2 id="h-log" data-i18n="log_head">Diagnostics</h2>
+    <details id="log-details">
+      <summary data-i18n="log_show">Show log</summary>
+      <div class="row"><button class="btn ghost" id="btn-log" data-i18n="log_refresh">Refresh</button><button class="btn ghost" id="btn-copy" data-i18n="log_copy">Copy</button></div>
+      <pre id="log" tabindex="0" aria-label="Log lines" data-i18n-aria="log_lines"></pre>
+    </details>
+  </section>
+</main>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const TOKEN_KEY = 'chiakitv.token';
+let token = localStorage.getItem(TOKEN_KEY) || '';
+let state = null, timer = null, consolesKey = '', settingsTouched = 0;
+let pollGen = 0;          // yoklama zincirinin kusagi: eski zincirler kendini sonlandirir
+let psnUrl = '', psnUrlBusy = false, psnSubmitted = false;
+const codeInputs = Array.from(document.querySelectorAll('.code input'));
+
+// ---- dil ----
+// Tek dil ayari televizyonda durur (/api/lang, durumdaki 'lang'). Buradaki kayit yalnizca acilista yanlis dil gorunmesin diye.
+const LANG_KEY = 'chiakitv.lang';
+const I18N = {
+  en: {
+    title: 'chiaki-tv setup',
+    link_connecting: 'Connecting',
+    link_found: 'TV found',
+    link_ok: 'Connected to TV',
+    link_lost: 'Cannot reach the TV',
+    pair_head: 'Pair with the TV',
+    pair_help: 'Enter the four-digit code shown on the TV screen.',
+    digit: 'Digit {0}',
+    err_pair: 'pairing required',
+    status_head: 'Status',
+    open_pad: 'Use this device as a controller',
+    pin_label: 'Console login PIN',
+    pin_help: 'The login PIN of the user on the console.',
+    pin_wrong: 'Incorrect PIN. Try again.',
+    pin_send: 'Send PIN',
+    disconnect: 'Disconnect',
+    cancel: 'Cancel',
+    phase_boot: 'TV is starting up',
+    phase_idle: 'Ready',
+    phase_busy: 'Working',
+    phase_connecting: 'Connecting',
+    phase_streaming: 'Streaming',
+    st_pad: ' · controller: {0}',
+    st_nopad: ' · no controller connected to the TV',
+    st_pick: 'Choose a console to connect.',
+    st_login: 'Sign in to PSN first.',
+    psn_note: 'Your password is entered only on Sony\'s own page; this page never sees it.',
+    psn_step1: '<b>Open the Sony sign-in page</b> and sign in with your account.',
+    psn_step2: 'When sign-in finishes, a blank page that says <b>"redirect"</b> opens. Copy the full address from the address bar.',
+    psn_step3: 'Come back here and paste the address below.',
+    psn_open: 'Open the Sony sign-in page',
+    redirect_label: 'Redirect address',
+    psn_finish: 'Finish sign-in',
+    psn_in: 'Signed in to PSN',
+    psn_in_sub: 'The session is stored on the TV and renews automatically.',
+    psn_logout: 'Sign out',
+    psn_need: 'Paste the redirect address first.',
+    psn_bad: 'This does not look like a redirect address; it should contain "code=".',
+    psn_confirm: 'Remove the PSN session from the TV?',
+    consoles_head: 'Consoles',
+    consoles_empty: 'No PS5 found for this account. Make sure the console is on or in rest mode and that Remote Play is enabled.',
+    refresh_list: 'Refresh list',
+    rp_on: 'Remote Play on',
+    rp_off: 'Remote Play off',
+    connect: 'Connect',
+    connect_to: 'Connect to {0}',
+    settings_head: 'Settings',
+    set_latency: 'Low latency',
+    latency_on: 'On (recommended)',
+    latency_off: 'Off',
+    latency_help: 'On: the TV shows each frame about 130 ms sooner; after packet loss the picture may freeze for a moment. Off: smoother on a poor connection, but controls feel delayed.',
+    set_res: 'Resolution',
+    set_fps: 'Frame rate',
+    set_bitrate: 'Bitrate',
+    bitrate_auto: 'Automatic (based on resolution)',
+    mbit: '{0} Mbit/s',
+    set_help: 'If the picture stutters, lower the resolution or the bitrate. On this TV 1080p runs at 30 fps. Changes apply from the next connection.',
+    set_lang: 'Language',
+    log_head: 'Diagnostics',
+    log_show: 'Show log',
+    log_refresh: 'Refresh',
+    log_copy: 'Copy',
+    log_copied: 'Copied',
+    log_selected: 'Selected, copy manually',
+    log_lines: 'Log lines',
+    log_empty: 'The log is empty.',
+  },
+  tr: {
+    title: 'chiaki-tv kurulum',
+    link_connecting: 'Bağlanılıyor',
+    link_found: 'Televizyon bulundu',
+    link_ok: 'Televizyona bağlı',
+    link_lost: 'Televizyona ulaşılamıyor',
+    pair_head: 'Televizyonla eşleş',
+    pair_help: 'Televizyon ekranındaki dört haneli kodu yaz.',
+    digit: '{0}. hane',
+    err_pair: 'eşleştirme gerekli',
+    status_head: 'Durum',
+    open_pad: 'Bu cihazı oyun kolu olarak kullan',
+    pin_label: 'Konsol giriş PIN\'i',
+    pin_help: 'Konsoldaki kullanıcının giriş PIN\'i.',
+    pin_wrong: 'PIN yanlış. Yeniden dene.',
+    pin_send: 'PIN\'i gönder',
+    disconnect: 'Bağlantıyı kes',
+    cancel: 'Vazgeç',
+    phase_boot: 'Televizyon hazırlanıyor',
+    phase_idle: 'Hazır',
+    phase_busy: 'Çalışıyor',
+    phase_connecting: 'Bağlanılıyor',
+    phase_streaming: 'Yayın sürüyor',
+    st_pad: ' · kol: {0}',
+    st_nopad: ' · televizyona bağlı oyun kolu yok',
+    st_pick: 'Bir konsol seçip bağlanabilirsin.',
+    st_login: 'Önce PSN girişi yap.',
+    psn_note: 'Şifren yalnızca Sony\'nin kendi sayfasına girilir; bu sayfa onu görmez.',
+    psn_step1: '<b>Sony giriş sayfasını aç</b> ve hesabınla giriş yap.',
+    psn_step2: 'Giriş bitince <b>"redirect"</b> yazan boş bir sayfa açılır. Adres çubuğundaki adresin tamamını kopyala.',
+    psn_step3: 'Buraya dönüp adresi aşağıya yapıştır.',
+    psn_open: 'Sony giriş sayfasını aç',
+    redirect_label: 'Yönlendirme adresi',
+    psn_finish: 'Girişi tamamla',
+    psn_in: 'PSN oturumu açık',
+    psn_in_sub: 'Oturum televizyonda saklanır ve kendiliğinden yenilenir.',
+    psn_logout: 'Oturumu kapat',
+    psn_need: 'Önce yönlendirme adresini yapıştır.',
+    psn_bad: 'Bu bir yönlendirme adresine benzemiyor; "code=" içermeli.',
+    psn_confirm: 'PSN oturumu televizyondan silinsin mi?',
+    consoles_head: 'Konsollar',
+    consoles_empty: 'Bu hesaba bağlı PS5 bulunamadı. Konsolun açık ya da dinlenme modunda ve Uzaktan Oynama\'nın etkin olduğundan emin ol.',
+    refresh_list: 'Listeyi yenile',
+    rp_on: 'Uzaktan Oynama açık',
+    rp_off: 'Uzaktan Oynama kapalı',
+    connect: 'Bağlan',
+    connect_to: '{0} konsoluna bağlan',
+    settings_head: 'Ayarlar',
+    set_latency: 'Düşük gecikme',
+    latency_on: 'Açık (önerilen)',
+    latency_off: 'Kapalı',
+    latency_help: 'Açık: televizyon her kareyi yaklaşık 130 ms daha erken gösterir; paket kaybından sonra görüntü kısa süre donabilir. Kapalı: kötü bağlantıda daha akıcı, ama kontroller gecikmeli hissedilir.',
+    set_res: 'Çözünürlük',
+    set_fps: 'Kare hızı',
+    set_bitrate: 'Bit hızı',
+    bitrate_auto: 'Otomatik (çözünürlüğe göre)',
+    mbit: '{0} Mbit/sn',
+    set_help: 'Görüntü takılıyorsa çözünürlüğü ya da bit hızını düşür. Bu televizyonda 1080p saniyede 30 kareyle çalışır. Değişiklik bir sonraki bağlantıda geçerli olur.',
+    set_lang: 'Dil',
+    log_head: 'Tanılama',
+    log_show: 'Günlüğü göster',
+    log_refresh: 'Yenile',
+    log_copy: 'Kopyala',
+    log_copied: 'Kopyalandı',
+    log_selected: 'Seçildi, elle kopyala',
+    log_lines: 'Günlük satırları',
+    log_empty: 'Günlük boş.',
+  },
+};
+let lang = 'en';
+try { if (I18N[localStorage.getItem(LANG_KEY)]) lang = localStorage.getItem(LANG_KEY); } catch (e) {}
+
+// t('anahtar', deger0, deger1...): metindeki {0}, {1} yerlerine degerler konur.
+function t(key, ...args) {
+  let s = I18N[lang][key];
+  if (s === undefined) s = I18N.en[key];
+  if (s === undefined) return key;
+  args.forEach((v, i) => { s = s.split('{' + i + '}').join(String(v)); });
+  return s;
+}
+// Metni dil degisince de dogru kalsin diye anahtariyla birlikte yazar; anahtar bossa ogeyi bosaltir.
+function setT(el, key) {
+  if (key) { el.dataset.i18n = key; el.textContent = t(key); } else { delete el.dataset.i18n; el.textContent = ''; }
+}
+// Isaretli butun ogeleri gecerli dile cevirir: data-i18n (metin), data-i18n-html (kalin yazi iceren metin),
+// data-i18n-aria (aria-label). Sozlukteki metinler bu dosyada sabittir; disaridan veri karismaz.
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
+  codeInputs.forEach((el, i) => { el.setAttribute('aria-label', t('digit', i + 1)); });
+  for (const o of $('set-bitrate').options) o.textContent = +o.value ? t('mbit', o.value / 1000) : t('bitrate_auto');
+  if (state) { consolesKey = ''; render(); }
+}
+// Bilinmeyen ya da eksik deger Ingilizce sayilir.
+function setLang(v) {
+  v = I18N[v] ? v : 'en';
+  if (v === lang) return;
+  lang = v;
+  try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+  applyI18n();
+}
+// Eslestirmeden once de dil bilinsin: bu uc belirtec istemez.
+async function loadLang() {
+  try { const r = await fetch('/api/lang', { cache: 'no-store' }); if (r.ok) setLang((await r.json()).lang); } catch (e) {}
+}
+
+async function api(path, body) {
+  const ctl = new AbortController();
+  const kill = setTimeout(() => ctl.abort(), 8000);   // televizyon kaybolursa sonsuza dek bekleme
+  const opt = { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Token': token }, cache: 'no-store', signal: ctl.signal };
+  if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  let res;
+  try { res = await fetch(path, opt); } finally { clearTimeout(kill); }
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (res.status === 401 && path !== '/api/pair') { token = ''; localStorage.removeItem(TOKEN_KEY); showPair(); throw new Error(t('err_pair')); }
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+function link(ok, key) { $('link-dot').className = 'dot ' + (ok ? 'ok' : 'bad'); setT($('link-text'), key); }
+
+function showPair() {
+  ['sec-status', 'sec-psn', 'sec-consoles', 'sec-settings', 'sec-log'].forEach((id) => { $(id).hidden = true; });
+  $('sec-pair').hidden = false;
+  clearTimeout(timer);
+  pollGen++;
+  link(true, 'link_found');
+  codeInputs.forEach((i) => { i.value = ''; });
+  codeInputs[0].focus();
+}
+
+// ---- eslestirme ----
+async function submitCode() {
+  const code = codeInputs.map((i) => i.value).join('');
+  if (code.length !== 4) return;
+  try {
+    const r = await api('/api/pair', { code });
+    token = r.token; localStorage.setItem(TOKEN_KEY, token);
+    $('pair-error').textContent = '';
+    $('sec-pair').hidden = true;
+    start();
+  } catch (e) {
+    $('pair-error').textContent = e.message;
+    codeInputs.forEach((i) => { i.value = ''; });
+    codeInputs[0].focus();
+  }
+}
+codeInputs.forEach((input, idx) => {
+  input.addEventListener('input', () => {
+    const d = input.value.replace(/\D/g, '');
+    let last = idx;
+    if (d.length <= 1) input.value = d;
+    else for (let n = 0; n < d.length && idx + n < 4; n++) { codeInputs[idx + n].value = d[n]; last = idx + n; }
+    if (codeInputs[last].value && last < 3) codeInputs[last + 1].focus();
+    submitCode();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !input.value && idx > 0) { codeInputs[idx - 1].value = ''; codeInputs[idx - 1].focus(); }
+  });
+});
+
+// ---- durum ----
+const PHASE = { boot: 'phase_boot', idle: 'phase_idle', busy: 'phase_busy', connecting: 'phase_connecting', streaming: 'phase_streaming' };
+
+function render() {
+  const s = state, busy = s.phase === 'busy' || s.phase === 'connecting', live = s.phase === 'streaming';
+  ['sec-status', 'sec-psn', 'sec-settings', 'sec-log'].forEach((id) => { $(id).hidden = false; });
+  $('sec-consoles').hidden = !s.loggedIn;
+  $('st-dot').className = 'dot ' + (live ? 'ok' : (busy ? '' : 'off'));
+  $('st-title').textContent = PHASE[s.phase] ? t(PHASE[s.phase]) : s.phase;
+  $('st-sub').textContent = live
+    ? `${s.stream.fps} fps` + (s.gamepad ? t('st_pad', s.gamepad.slice(0, 30)) : t('st_nopad'))
+    : (s.message || t(s.loggedIn ? 'st_pick' : 'st_login'));
+  $('st-error').hidden = !s.error; $('st-error').textContent = s.error || '';
+  $('pin-box').hidden = !s.needPin;
+  if (s.needPin) $('pin-help').textContent = t(s.pinIncorrect ? 'pin_wrong' : 'pin_help');
+  $('btn-stop').hidden = !(live || s.phase === 'connecting');
+  $('btn-stop').textContent = t(live ? 'disconnect' : 'cancel');
+
+  $('psn-out').hidden = s.loggedIn; $('psn-in').hidden = !s.loggedIn;
+  $('btn-psn').disabled = busy;
+  $('btn-logout').disabled = busy || live;
+  if (!s.loggedIn && !psnUrl) loadLoginUrl();
+  if (psnSubmitted && !busy) {              // giris denemesi sonuclandi
+    psnSubmitted = false;
+    if (s.loggedIn) $('redirect').value = '';
+  }
+
+  const key = JSON.stringify(s.consoles) + s.phase;
+  if (key !== consolesKey) {
+    consolesKey = key;
+    const box = $('console-list');
+    box.replaceChildren();
+    for (const c of s.consoles) {
+      const row = document.createElement('div'); row.className = 'console';
+      const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = 'PS5';
+      const grow = document.createElement('div'); grow.className = 'grow';
+      const name = document.createElement('div'); name.className = 'name'; name.textContent = c.name || 'PS5';
+      const sub = document.createElement('div'); sub.className = 'sub';
+      sub.textContent = t(c.remoteplay ? 'rp_on' : 'rp_off');
+      grow.append(name, sub);
+      const btn = document.createElement('button'); btn.className = 'btn primary'; btn.textContent = t('connect');
+      btn.disabled = !c.remoteplay || busy || live;
+      btn.setAttribute('aria-label', t('connect_to', c.name || 'PS5'));
+      btn.addEventListener('click', () => act('/api/connect', { duid: c.duid }));
+      row.append(tag, grow, btn);
+      box.append(row);
+    }
+    $('console-empty').hidden = s.consoles.length > 0;
+  }
+  $('btn-refresh').disabled = busy || live;
+
+  // Kullanici bir ayari yeni degistirdiyse sunucudaki eski deger secimi geri almasin.
+  if (Date.now() - settingsTouched > 4000) {
+    $('set-res').value = String(s.settings.resolution);
+    $('set-fps').value = String(s.settings.fps);
+    $('set-bitrate').value = String(s.settings.bitrate);
+    $('set-lang').value = lang;
+    $('set-latency').value = s.settings.lowLatency === false ? '0' : '1';
+  }
+}
+
+// Tek bir yoklama zinciri yasar: her yeniden baslatma kusagi artirir, eski zincir sonucunu atar.
+async function poll(gen) {
+  try {
+    const next = await api('/api/state');
+    if (gen !== pollGen) return;
+    state = next;
+    link(true, 'link_ok');
+    if ((I18N[state.lang] ? state.lang : 'en') !== lang) setLang(state.lang); else render();
+  } catch (e) {
+    if (gen !== pollGen || !token) return;
+    link(false, 'link_lost');
+  }
+  timer = setTimeout(() => poll(gen), state && state.phase !== 'idle' ? 1000 : 2000);
+}
+function restartPoll() { clearTimeout(timer); poll(++pollGen); }
+
+async function act(path, body) {
+  let ok = true;
+  try { await api(path, body || {}); } catch (e) { ok = false; if (token) { $('st-error').hidden = false; $('st-error').textContent = e.message; } }
+  if (token) restartPoll();
+  return ok;
+}
+
+async function loadLoginUrl() {
+  if (psnUrl || psnUrlBusy || !token) return;
+  psnUrlBusy = true;
+  try {
+    const r = await api('/api/psn/begin', {});
+    psnUrl = r.url;
+    $('psn-link').href = psnUrl; $('psn-link').removeAttribute('aria-disabled');
+  } catch (e) {} finally { psnUrlBusy = false; }
+}
+
+function start() {
+  if (!token) { showPair(); return; }
+  loadLoginUrl();
+  restartPoll();
+}
+
+// ---- eylemler ----
+$('btn-psn').addEventListener('click', async () => {
+  const value = $('redirect').value.trim();
+  if (!value) { setT($('psn-error'), 'psn_need'); $('redirect').focus(); return; }
+  if (!/code=/.test(value) && value.length < 6) { setT($('psn-error'), 'psn_bad'); return; }
+  setT($('psn-error'), '');
+  $('btn-psn').disabled = true;             // tek kullanimlik kod iki kez gonderilmesin
+  psnSubmitted = await act('/api/psn/finish', { redirect: value });
+  if (!psnSubmitted) $('btn-psn').disabled = false;
+});
+$('btn-logout').addEventListener('click', () => { if (confirm(t('psn_confirm'))) act('/api/logout'); });
+$('btn-refresh').addEventListener('click', () => act('/api/consoles/refresh'));
+$('btn-stop').addEventListener('click', () => act('/api/stop'));
+$('btn-pin').addEventListener('click', () => { const v = $('pin').value.trim(); if (v) { act('/api/pin', { pin: v }); $('pin').value = ''; } });
+['set-res', 'set-fps', 'set-bitrate', 'set-lang', 'set-latency'].forEach((id) => $(id).addEventListener('change', () => {
+  settingsTouched = Date.now();
+  act('/api/settings', { resolution: +$('set-res').value, fps: +$('set-fps').value, bitrate: +$('set-bitrate').value, lang: $('set-lang').value,
+    lowLatency: $('set-latency').value === '1' });
+}));
+async function loadLog() {
+  try { const r = await api('/api/log'); $('log').textContent = (r.lines || []).join('\n') || t('log_empty'); $('log').scrollTop = $('log').scrollHeight; } catch (e) {}
+}
+$('btn-log').addEventListener('click', loadLog);
+$('log-details').addEventListener('toggle', () => { if ($('log-details').open) loadLog(); });
+$('btn-copy').addEventListener('click', async () => {
+  // navigator.clipboard yalnizca guvenli (https) kaynaklarda var; bu sayfa http oldugu icin secip kopyala.
+  let done = false;
+  try { if (navigator.clipboard) { await navigator.clipboard.writeText($('log').textContent); done = true; } } catch (e) {}
+  if (!done) {
+    const r = document.createRange(); r.selectNodeContents($('log'));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    try { done = document.execCommand('copy'); } catch (e) {}
+  }
+  $('btn-copy').textContent = t(done ? 'log_copied' : 'log_selected');
+  setTimeout(() => { $('btn-copy').textContent = t('log_copy'); }, 2000);
+});
+
+applyI18n();
+loadLang();
+start();
+</script>
+</body>
+</html>

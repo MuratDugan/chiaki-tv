@@ -1,0 +1,23 @@
+# Build output
+build/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Third-party sources and host tools: fetched separately, see README
+vendor/
+chiaki-tv/tools/host/
+
+# Signing keys and anything specific to one TV: never published
+tv-probe/certs/
+tv-probe/tv-token.txt
+tv-probe/tv-cert.sha256
+tv-probe/tv-ip.txt
+tv-probe/results/
+
+# Local drafts
+chiaki-tv/UPSTREAM.md
+
+# Local clone of upstream (patches live in patches/) and unrelated work
+upstream/
+perde/

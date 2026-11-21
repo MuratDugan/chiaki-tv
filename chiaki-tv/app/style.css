@@ -1,0 +1,181 @@
+/* chiaki-tv — TV arayuzu. Hedef motor Chrome 47: CSS degiskeni, grid ve flex gap YOK.
+   Renkler: zemin #0F0F23, yuzey #17172F / #27273B, kenar #312E81, indigo #4338CA, vurgu #22C55E, yazi #F8FAFC. */
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+body {
+  font-family: "SamsungOne", "Samsung Sharp Sans", "Helvetica Neue", Arial, sans-serif;
+  color: #F8FAFC; -webkit-font-smoothing: antialiased;
+}
+#stage {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden;
+  -webkit-transform-origin: 0 0; transform-origin: 0 0; background: #000;
+}
+.hidden { display: none !important; }
+
+/* yerel modul: tam ekran, arayuzun altinda */
+#nacl-host { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+/* Modul 1280x720 cizer, birlestirici 1,5 kat buyutur: 1080p arka tampon bu TV'nin grafik islemcisinde
+   saniyede ~35 kareyle sinirli kaliyor. */
+#nacl-host embed { display: block; width: 1280px; height: 720px; -webkit-transform: scale(1.5); transform: scale(1.5);
+  -webkit-transform-origin: 0 0; transform-origin: 0 0; }
+
+/* --- ana ekran --- */
+.screen { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+#ui {
+  padding: 56px 104px; display: flex; flex-direction: column;
+  background-color: #0F0F23;
+  background-image:
+    radial-gradient(circle at 10% 14%, rgba(67, 56, 202, 0.42), rgba(67, 56, 202, 0) 46%),
+    radial-gradient(circle at 90% 94%, rgba(34, 197, 94, 0.13), rgba(34, 197, 94, 0) 42%);
+}
+.top { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+.brand { display: flex; align-items: center; }
+.brand svg { width: 64px; height: 64px; margin-right: 22px; }
+.brand-name { font-size: 44px; font-weight: 700; letter-spacing: 1px; }
+.brand-sub { font-size: 28px; color: #A8B0C8; margin-left: 24px; }
+.chip {
+  display: flex; align-items: center; height: 62px; padding: 0 30px; border-radius: 31px;
+  background: rgba(39, 39, 59, 0.82); border: 2px solid #312E81; font-size: 27px; color: #D5DAEA;
+}
+.dot { width: 14px; height: 14px; border-radius: 7px; background: #F59E0B; margin-right: 16px; flex-shrink: 0; }
+.dot.ok { background: #22C55E; }
+.dot.off { background: #6B7090; }
+.sep { width: 2px; height: 26px; background: #4B4B6B; margin: 0 20px; }
+
+.main { flex: 1; display: flex; padding-top: 44px; }
+.left { width: 780px; }
+.right { flex: 1; padding-left: 56px; }
+.eyebrow { font-size: 25px; letter-spacing: 6px; color: #A5B4FC; font-weight: 700; margin-bottom: 20px; }
+.gap-top { margin-top: 30px; }
+
+.panel { padding: 40px 44px; border-radius: 34px; background: rgba(23, 23, 47, 0.9); border: 2px solid #312E81; }
+.setup-text { font-size: 30px; color: #C7CCE0; }
+.setup-url { font-size: 46px; font-weight: 700; margin-top: 12px; color: #F8FAFC; letter-spacing: 0.5px; }
+.code { display: flex; margin-top: 20px; }
+.digit {
+  width: 132px; height: 164px; margin-right: 22px; border-radius: 26px;
+  background: #1E1B4B; border: 3px solid #4338CA;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 108px; font-weight: 700; line-height: 1;
+}
+.psn-line { display: flex; align-items: center; margin-top: 34px; font-size: 29px; color: #E2E8F0; }
+
+/* odaklanabilir ogeler */
+.item {
+  border-radius: 26px; background: rgba(39, 39, 59, 0.55); border: 3px solid rgba(49, 46, 129, 0.7);
+  -webkit-transition: border-color 0.15s ease-out, background-color 0.15s ease-out, -webkit-transform 0.15s ease-out;
+  transition: border-color 0.15s ease-out, background-color 0.15s ease-out, transform 0.15s ease-out;
+}
+.item.focus { border-color: #A5B4FC; background: rgba(67, 56, 202, 0.42); -webkit-transform: scale(1.02); transform: scale(1.02); }
+#consoles { max-height: 420px; overflow: hidden; padding: 6px 8px; margin: -6px -8px; }
+.console { display: flex; align-items: center; padding: 26px 32px; margin-bottom: 20px; }
+.console .badge {
+  width: 96px; height: 64px; border-radius: 16px; background: #312E81; margin-right: 28px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700;
+}
+.console.focus .badge { background: #4338CA; }
+.console-name { font-size: 36px; font-weight: 600; }
+.console-sub { font-size: 26px; color: #A8B0C8; margin-top: 6px; }
+.console .go { margin-left: auto; font-size: 27px; color: #A5B4FC; opacity: 0; }
+.console.focus .go { opacity: 1; }
+.console.disabled { opacity: 0.55; }
+.empty { padding: 30px 34px; border-radius: 26px; border: 2px dashed #3F3F5F; font-size: 29px; color: #C7CCE0; line-height: 1.4; }
+
+.row { display: flex; }
+/* Dort kutu yan yana: en uzun deger ("English", oklariyla) tek satira sigsin diye ic bosluk dar tutulur. */
+.opt { flex: 1; padding: 20px 18px; margin-right: 14px; }
+.opt:last-child { margin-right: 0; }
+.opt-label { display: block; font-size: 24px; color: #A8B0C8; white-space: nowrap; }
+.opt-value { display: block; font-size: 32px; font-weight: 600; margin-top: 6px; white-space: nowrap; }
+.arrow { color: #6B7090; }
+.opt.focus .arrow { color: #A5B4FC; }
+
+.banner {
+  margin-bottom: 14px; padding: 22px 30px; border-radius: 22px;
+  background: rgba(127, 29, 29, 0.92); border: 2px solid #EF4444; font-size: 28px; color: #FEE2E2;
+}
+.foot { display: flex; align-items: center; height: 56px; font-size: 25px; color: #8F97B3; }
+.key { display: inline-block; padding: 6px 18px; border-radius: 12px; border: 2px solid #4B4B6B; color: #E2E8F0; margin-right: 14px; font-weight: 600; }
+.gap { display: inline-block; width: 40px; }
+.ver { margin-left: auto; }
+
+/* --- akis ustu bilgi --- */
+#hud {
+  position: absolute; right: 48px; top: 40px; height: 60px; padding: 0 28px; border-radius: 30px;
+  display: flex; align-items: center; font-size: 25px; color: #E2E8F0;
+  background: rgba(15, 15, 35, 0.86); border: 2px solid #312E81;
+  opacity: 0; -webkit-transition: opacity 0.25s ease-out; transition: opacity 0.25s ease-out;
+}
+#hud.show { opacity: 1; }
+.live-dot { width: 14px; height: 14px; border-radius: 7px; background: #22C55E; margin-right: 14px; }
+.hud-strong { font-weight: 700; letter-spacing: 2px; }
+.hud-sep { width: 2px; height: 24px; background: #4B4B6B; margin: 0 18px; }
+
+/* --- kisayol bildirimi --- */
+/* Sag ustteki durum hapinin (#hud) altinda, ortada durur: ikisi baglaninca ayni anda gorunur. */
+#tip {
+  position: absolute; left: 0; top: 124px; width: 1920px; text-align: center; font-size: 28px; color: #E2E8F0;
+  opacity: 0; -webkit-transition: opacity 0.3s ease-out; transition: opacity 0.3s ease-out;
+}
+#tip.show { opacity: 1; }
+.tip-pill {
+  display: inline-block; padding: 14px 32px; border-radius: 44px;
+  background: rgba(15, 15, 35, 0.86); border: 2px solid #312E81;
+}
+.tip-pill > span { vertical-align: middle; }
+#tip .plus { margin: 0 8px; color: #A5B4FC; }
+
+/* --- yayin menusu: goruntunun altinda yari saydam serit --- */
+#menu {
+  position: absolute; left: 60px; bottom: 48px; width: 1800px; box-sizing: border-box; padding: 30px 40px 32px 40px;
+  border-radius: 34px; background: rgba(15, 15, 35, 0.9); border: 2px solid #312E81;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+#menu.hidden { display: none; }
+.menu-head { display: flex; align-items: center; height: 44px; }
+.menu-title { font-size: 34px; font-weight: 700; color: #F8FAFC; }
+.menu-sub { margin-left: 22px; font-size: 26px; color: #A9B0CC; }
+.menu-stats { display: flex; margin-top: 24px; }
+.stat {
+  flex: 1; margin-right: 16px; padding: 18px 0 16px 0; border-radius: 22px; text-align: center;
+  background: rgba(39, 39, 59, 0.75); border: 2px solid rgba(49, 46, 129, 0.8);
+}
+.stat.last { margin-right: 0; }
+.stat-v { font-size: 44px; font-weight: 700; color: #F8FAFC; line-height: 1.1; }
+.stat-l { margin-top: 6px; font-size: 22px; color: #A9B0CC; white-space: nowrap; }
+.menu-actions { display: flex; align-items: center; margin-top: 26px; }
+.mbtn {
+  height: 72px; line-height: 68px; padding: 0 34px; margin-right: 18px; border-radius: 22px; font-size: 28px; font-weight: 600;
+  color: #E2E8F0; background: rgba(39, 39, 59, 0.9); border: 3px solid rgba(49, 46, 129, 0.9); white-space: nowrap;
+}
+.mbtn.focus { border-color: #A5B4FC; background: #4338CA; color: #FFFFFF; }
+.menu-hint { margin-left: auto; font-size: 24px; color: #8F97B3; white-space: nowrap; }
+.menu-hint .gap { display: inline-block; width: 28px; }
+
+/* --- katmanlar --- */
+.overlay {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px;
+  background: rgba(0, 0, 0, 0.66); display: flex; align-items: center; justify-content: center;
+}
+.card {
+  width: 820px; padding: 56px; border-radius: 36px; text-align: center;
+  background: #17172F; border: 2px solid #312E81; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+.card.wide { width: 1000px; }
+.card-title { font-size: 44px; font-weight: 700; margin-top: 8px; }
+.card-sub { font-size: 30px; color: #C7CCE0; margin-top: 16px; line-height: 1.35; min-height: 40px; }
+.card-hint { font-size: 26px; color: #8F97B3; margin-top: 34px; }
+.spinner {
+  width: 72px; height: 72px; margin: 0 auto 26px auto; border-radius: 36px;
+  border: 7px solid #312E81; border-top-color: #818CF8;
+  -webkit-animation: spin 0.9s linear infinite; animation: spin 0.9s linear infinite;
+}
+@-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pin-value { font-size: 72px; font-weight: 700; letter-spacing: 18px; margin-top: 26px; min-height: 90px; color: #F8FAFC; }
+.keypad { width: 468px; margin: 18px auto 0 auto; overflow: hidden; }
+.keypad .item {
+  float: left; width: 140px; height: 84px; margin: 8px; font-size: 38px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}

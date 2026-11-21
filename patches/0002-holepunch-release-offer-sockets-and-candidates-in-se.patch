@@ -1,0 +1,58 @@
+From c48cef5d1f5486a1c4def714c7e79a8b80f471c7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Murat=20Du=C4=9Fan?=
+ <111883464+MuratDugan@users.noreply.github.com>
+Date: Sun, 22 Nov 2026 01:55:08 +0300
+Subject: [PATCH] holepunch: release offer sockets and candidates in
+ session_fini
+
+holepunch_session_create_offer() opens the UDP sockets and allocates the
+local candidates and the offer message. They are released at the end of
+chiaki_holepunch_session_punch_hole(). When the session is torn down
+before the hole punch runs, for example because
+chiaki_holepunch_session_start() failed (console off or unreachable) or
+the user cancelled, chiaki_holepunch_session_fini() left them behind:
+one or two sockets and two allocations per attempt.
+
+Release them in fini. After a hole punch these fields are already reset
+to CHIAKI_INVALID_SOCKET / NULL, so nothing is released twice.
+---
+ lib/src/remote/holepunch.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/lib/src/remote/holepunch.c b/lib/src/remote/holepunch.c
+index d5104d1..ba292a8 100644
+--- a/lib/src/remote/holepunch.c
++++ b/lib/src/remote/holepunch.c
+@@ -1880,6 +1880,29 @@ CHIAKI_EXPORT void chiaki_holepunch_session_fini(Session* session)
+         free(session->gw.data);
+         free(session->gw.urls);
+     }
++    // Set up by holepunch_session_create_offer() and normally released by
++    // chiaki_holepunch_session_punch_hole(). If the session ends before that runs,
++    // they are still ours to release.
++    if(!CHIAKI_SOCKET_IS_INVALID(session->ipv4_sock))
++    {
++        CHIAKI_SOCKET_CLOSE(session->ipv4_sock);
++        session->ipv4_sock = CHIAKI_INVALID_SOCKET;
++    }
++    if(!CHIAKI_SOCKET_IS_INVALID(session->ipv6_sock))
++    {
++        CHIAKI_SOCKET_CLOSE(session->ipv6_sock);
++        session->ipv6_sock = CHIAKI_INVALID_SOCKET;
++    }
++    if(session->our_offer_msg)
++    {
++        session_message_free(session->our_offer_msg);
++        session->our_offer_msg = NULL;
++    }
++    if(session->local_candidates)
++    {
++        free(session->local_candidates);
++        session->local_candidates = NULL;
++    }
+     if (session->oauth_header)
+         free(session->oauth_header);
+     if(session->session_id_header)
+-- 
+2.54.0 (Apple Git-157)
+

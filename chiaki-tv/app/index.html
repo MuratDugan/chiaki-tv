@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, user-scalable=no">
+<title>chiaki-tv</title>
+<link rel="stylesheet" href="style.css">
+<script src="$WEBAPIS/webapis/webapis.js"></script>
+</head>
+<body>
+<div id="stage">
+
+  <!-- Yerel modul: akis goruntusu buraya cizilir -->
+  <div id="nacl-host"></div>
+
+  <!-- Ana ekran -->
+  <div id="ui" class="screen">
+    <div class="top">
+      <div class="brand">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="2" y="2" width="60" height="60" rx="16" fill="#4338CA"/>
+          <path d="M24 20l22 12-22 12z" fill="#F8FAFC"/>
+          <circle cx="47" cy="19" r="5" fill="#22C55E"/>
+        </svg>
+        <span class="brand-name">chiaki-tv</span>
+        <span class="brand-sub" data-i18n="brand_sub">PS5 Remote Play</span>
+      </div>
+      <div class="chip">
+        <span id="pad-dot" class="dot"></span>
+        <span id="pad-text" data-i18n="pad_none">No controller</span>
+        <span class="sep"></span>
+        <span id="tv-ip" data-i18n="ip_wait">getting address</span>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="left">
+        <div class="panel">
+          <div class="eyebrow" data-i18n="setup_head">SET UP FROM YOUR PHONE</div>
+          <div class="setup-text" data-i18n="setup_open">Open on your phone or computer</div>
+          <div class="setup-url" id="setup-url">http://…</div>
+          <div class="setup-text gap-top" data-i18n="setup_code">and enter this code</div>
+          <div class="code">
+            <div class="digit" id="d0">&ndash;</div>
+            <div class="digit" id="d1">&ndash;</div>
+            <div class="digit" id="d2">&ndash;</div>
+            <div class="digit" id="d3">&ndash;</div>
+          </div>
+          <div class="psn-line">
+            <span id="psn-dot" class="dot"></span>
+            <span id="psn-text" data-i18n="psn_off">Not signed in to PSN</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="eyebrow" data-i18n="consoles_head">CONSOLES</div>
+        <div id="consoles"></div>
+        <div id="empty" class="empty hidden"></div>
+
+        <div class="eyebrow gap-top" data-i18n="settings_head">SETTINGS</div>
+        <div class="row">
+          <div class="item opt" id="opt-res" data-focus="1">
+            <span class="opt-label" data-i18n="opt_res">Resolution</span>
+            <span class="opt-value"><span class="arrow">&lsaquo;</span> <span id="val-res">720p</span> <span class="arrow">&rsaquo;</span></span>
+          </div>
+          <div class="item opt" id="opt-fps" data-focus="1">
+            <span class="opt-label" data-i18n="opt_fps">Frame rate</span>
+            <span class="opt-value"><span class="arrow">&lsaquo;</span> <span id="val-fps">60</span> <span class="arrow">&rsaquo;</span></span>
+          </div>
+          <div class="item opt" id="opt-lang" data-focus="1">
+            <span class="opt-label" data-i18n="opt_lang">Language</span>
+            <span class="opt-value"><span class="arrow">&lsaquo;</span> <span id="val-lang">English</span> <span class="arrow">&rsaquo;</span></span>
+          </div>
+          <div class="item opt" id="opt-refresh" data-focus="1">
+            <span class="opt-label" data-i18n="opt_list">Console list</span>
+            <span class="opt-value" data-i18n="opt_refresh">Refresh</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="banner" class="banner hidden"></div>
+
+    <div class="foot">
+      <span class="key">OK</span><span data-i18n="foot_select">Select</span><span class="gap"></span>
+      <span class="key">&#9650;&#9660;</span><span data-i18n="foot_move">Navigate</span><span class="gap"></span>
+      <span class="key">&#9664;&#9654;</span><span data-i18n="foot_change">Change setting</span><span class="gap"></span>
+      <span class="key" data-i18n="key_back">Back</span><span data-i18n="exit">Exit</span>
+      <span class="ver" id="ver">chiaki-tv 0.1</span>
+    </div>
+  </div>
+
+  <!-- Akis ustu bilgi -->
+  <div id="hud">
+    <span class="live-dot"></span>
+    <span class="hud-strong" data-i18n="hud_live">LIVE</span>
+    <span class="hud-sep"></span>
+    <span id="hud-fps">– fps</span>
+    <span class="hud-sep"></span>
+    <span id="hud-pad" data-i18n="hud_pad_none">no controller</span>
+    <span class="hud-sep"></span>
+    <span data-i18n="hud_exit">Hold Back to exit</span>
+  </div>
+
+  <!-- Baglaninca gorunen kisayol bildirimi -->
+  <div id="tip"><div class="tip-pill">
+    <span data-i18n="tip_pre">Press</span>
+    <span class="key">L1</span><span class="plus">+</span><span class="key">R1</span><span class="plus">+</span><span class="key">L3</span><span class="plus">+</span><span class="key">R3</span>
+    <span data-i18n="tip_post">to open the stream menu</span>
+  </div></div>
+
+  <!-- Yayin menusu: L1 + R1 + L3 + R3 (kumandada Info) -->
+  <div id="menu" class="hidden">
+    <div class="menu-head">
+      <span class="live-dot"></span>
+      <span class="menu-title" id="menu-title"></span>
+      <span class="menu-sub" id="menu-sub"></span>
+    </div>
+    <div class="menu-stats">
+      <div class="stat"><div class="stat-v" id="st-mbps">–</div><div class="stat-l">Mbps</div></div>
+      <div class="stat"><div class="stat-v" id="st-decoded">–</div><div class="stat-l" data-i18n="st_decoded">decoded fps</div></div>
+      <div class="stat"><div class="stat-v" id="st-fps">–</div><div class="stat-l" data-i18n="st_fps">on screen fps</div></div>
+      <div class="stat"><div class="stat-v" id="st-decode">–</div><div class="stat-l" data-i18n="st_decode">decoder delay</div></div>
+      <div class="stat"><div class="stat-v" id="st-screen">–</div><div class="stat-l" data-i18n="st_screen">network to screen</div></div>
+      <div class="stat"><div class="stat-v" id="st-rtt">–</div><div class="stat-l" data-i18n="st_rtt">round trip</div></div>
+      <div class="stat last"><div class="stat-v" id="st-lost">–</div><div class="stat-l" data-i18n="st_lost">lost frames</div></div>
+    </div>
+    <div class="menu-actions">
+      <div class="mbtn" id="m-resume" data-i18n="m_resume">Back to game</div>
+      <div class="mbtn" id="m-disconnect" data-i18n="m_disconnect">Disconnect</div>
+      <div class="mbtn" id="m-sleep" data-i18n="m_sleep">Disconnect and sleep</div>
+      <div class="menu-hint"><span class="key">◀ ▶</span> <span data-i18n="foot_move">Navigate</span><span class="gap"></span><span class="key">✕ / OK</span> <span data-i18n="foot_select">Select</span></div>
+    </div>
+  </div>
+
+  <!-- Baglaniyor -->
+  <div id="busy" class="overlay hidden">
+    <div class="card">
+      <div class="spinner"></div>
+      <div class="card-title" id="busy-title" data-i18n="connecting">Connecting</div>
+      <div class="card-sub" id="busy-text"></div>
+      <div class="card-hint"><span class="key" data-i18n="key_back">Back</span> <span data-i18n="cancel">Cancel</span></div>
+    </div>
+  </div>
+
+  <!-- Konsol giris PIN'i -->
+  <div id="pin" class="overlay hidden">
+    <div class="card wide">
+      <div class="card-title" data-i18n="pin_title">Console login PIN</div>
+      <div class="card-sub" id="pin-sub" data-i18n="pin_sub">Enter the login PIN of the user on the console.</div>
+      <div class="pin-value" id="pin-value"></div>
+      <div class="keypad" id="keypad"></div>
+      <div class="card-hint" data-i18n="pin_hint">You can also use the remote's number keys or the phone page.</div>
+    </div>
+  </div>
+
+  <!-- Cikis onayi -->
+  <div id="exit" class="overlay hidden">
+    <div class="card">
+      <div class="card-title" data-i18n="exit_title">Disconnect?</div>
+      <div class="card-sub" data-i18n="exit_sub">The console stays on and the game keeps running.</div>
+      <div class="card-hint"><span class="key">OK</span> <span data-i18n="disconnect">Disconnect</span><span class="gap"></span><span class="key" data-i18n="key_back">Back</span> <span data-i18n="exit_stay">Back to game</span></div>
+    </div>
+  </div>
+
+  <!-- Modul yuklenemedi -->
+  <div id="fatal" class="overlay hidden">
+    <div class="card wide">
+      <div class="card-title" data-i18n="fatal_title">The app core did not start</div>
+      <div class="card-sub" id="fatal-text"></div>
+      <div class="card-hint"><span class="key">OK</span> <span data-i18n="retry">Retry</span><span class="gap"></span><span class="key" data-i18n="key_back">Back</span> <span data-i18n="exit">Exit</span></div>
+    </div>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

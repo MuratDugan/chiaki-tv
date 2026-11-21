@@ -1,0 +1,46 @@
+From 837a8a0ee3a2d6400646eaa691725a26062939c5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Murat=20Du=C4=9Fan?=
+ <111883464+MuratDugan@users.noreply.github.com>
+Date: Sun, 22 Nov 2026 01:55:08 +0300
+Subject: [PATCH] session: cancel the data hole punch in chiaki_session_stop
+
+With a PSN connection the session thread calls
+chiaki_holepunch_session_punch_hole() for the data port while holding
+state_mutex. That call waits for the console in three steps of up to
+30 seconds each. chiaki_session_stop() starts by locking state_mutex,
+so a stop requested in that window does nothing for 30 to 90 seconds,
+and the calling thread is stuck for as long.
+
+Cancel the hole punch before taking the lock.
+chiaki_holepunch_main_thread_cancel() only takes the holepunch
+session's own stop_mutex.
+
+One thing to check when reviewing: if the stop arrives after the hole
+punch has finished, main_should_stop can still be set when
+chiaki_holepunch_session_fini() waits for the deletion notification,
+and that wait would then return CANCELED instead of confirming the
+deletion. In my tests (stop during a running stream) the deletion was
+still confirmed and logged as usual.
+---
+ lib/src/session.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/lib/src/session.c b/lib/src/session.c
+index 41c6bbf..8397792 100644
+--- a/lib/src/session.c
++++ b/lib/src/session.c
+@@ -313,6 +313,11 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_start(ChiakiSession *session)
+ 
+ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_stop(ChiakiSession *session)
+ {
++	// The session thread keeps state_mutex locked while it punches the hole for the
++	// data connection, which can wait on the console for up to 90 seconds. Cancel
++	// that wait first, otherwise the lock below does not return until it is over.
++	if(session->holepunch_session)
++		chiaki_holepunch_main_thread_cancel(session->holepunch_session, false);
+ 	ChiakiErrorCode err = chiaki_mutex_lock(&session->state_mutex);
+ 	assert(err == CHIAKI_ERR_SUCCESS);
+ 
+-- 
+2.54.0 (Apple Git-157)
+
