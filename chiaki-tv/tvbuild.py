@@ -7,6 +7,7 @@
   python3 tvbuild.py launch     # TV'de ac
   python3 tvbuild.py all        # native + build + install
   python3 tvbuild.py uninstall
+  python3 tvbuild.py release    # kurulum arsivi: paket + install.py -> build/release/
 
 Arac zinciri: Samsung Pepper 47 (NACL_SDK_ROOT, varsayilan ~/Downloads/NaCl_SDK_v47f/pepper_47).
 Imzalama ve sdb icin ../tv-probe icindeki araclar kullanilir.
@@ -14,6 +15,7 @@ Imzalama ve sdb icin ../tv-probe icindeki araclar kullanilir.
 import json
 import math
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -134,9 +136,42 @@ def launch(debug=False):
     return int(line.rsplit("port:", 1)[1].strip()) if debug and "port:" in line else None
 
 
+INSTALL_TXT = """chiaki-tv %s
+
+1. On the TV: open Apps, press 1 2 3 4 5 on the remote, set Developer mode to On,
+   enter this computer's address as Host PC IP, then hold the power button until the TV restarts.
+2. On this computer, in this folder:
+
+       python3 install.py <address of the TV>
+
+3. On your phone, open the address the installer prints and enter the code shown on the TV.
+
+Full guide and troubleshooting: https://github.com/MuratDugan/chiaki-tv
+"""
+
+
+def release():
+    """Kurulum arsivi: hazir paket + kurucu. build/release/chiaki-tv-<surum>.zip"""
+    root = os.path.join(HERE, "..")
+    version = re.search(r'<widget[^>]*\sversion="([^"]+)"', open(os.path.join(SRC, "config.xml"), encoding="utf-8").read()).group(1)
+    out_dir = os.path.join(BUILD, "release")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "chiaki-tv-%s.zip" % version)
+    folder = "chiaki-tv-%s/" % version
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(WGT, folder + "ChiakiTv.wgt")
+        z.write(os.path.join(root, "install.py"), folder + "install.py")
+        z.write(os.path.join(root, "tv-probe", "sdb.py"), folder + "sdb.py")
+        z.write(os.path.join(root, "LICENSE"), folder + "LICENSE")
+        z.write(os.path.join(root, "THIRD-PARTY.md"), folder + "THIRD-PARTY.md")
+        z.writestr(folder + "INSTALL.txt", INSTALL_TXT % version)
+    print("surum arsivi: build/release/%s (%d KB)" % (os.path.basename(path), os.path.getsize(path) // 1024))
+    return path
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    if cmd not in ("native", "build", "install", "launch", "all", "uninstall"):
+    if cmd not in ("native", "build", "install", "launch", "all", "uninstall", "release"):
         print(__doc__)
         return 1
     try:
@@ -148,6 +183,9 @@ def main():
             install()
         if cmd == "launch":
             launch()
+        if cmd == "release":
+            build()
+            release()
         if cmd == "uninstall":
             print(sdb_run("shell:0 vd_appuninstall " + APP_ID, timeout=60).strip())
     except SdbError as e:

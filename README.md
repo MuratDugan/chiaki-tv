@@ -8,6 +8,89 @@ The TV connects to the console itself through PSN, so the console can be on anot
 
 This is a working prototype. It has been tested on one TV, a 2017 UE49MU7400 (Tizen 3.0), with a PS5.
 
+## Install on your TV
+
+It takes about ten minutes. You do not need to build anything.
+
+You need:
+
+- A Samsung smart TV that still has Native Client. That is roughly the 2016 to 2019 models; only a 2017 model has been tested.
+- A computer on the same network as the TV, with [Python 3](https://www.python.org/downloads/).
+- A PS5 signed in to your PSN account, with Remote Play enabled (Settings > System > Remote Play).
+
+### 1. Turn on developer mode on the TV
+
+You do this once.
+
+1. On the TV open **Apps**.
+2. Press **1 2 3 4 5** on the remote. A "Developer mode" dialog opens.
+3. Set Developer mode to **On**.
+4. In **Host PC IP** enter the address of your computer.
+5. Hold the power button until the TV restarts.
+
+Note the TV's own address too: Settings > General > Network > Network Status > IP Settings.
+
+### 2. Download chiaki-tv
+
+Get the latest `chiaki-tv-*.zip` from [Releases](https://github.com/MuratDugan/chiaki-tv/releases) and unpack it.
+
+### 3. Run the installer
+
+In the unpacked folder, with the TV's address:
+
+```bash
+python3 install.py 192.168.1.50
+```
+
+It sends the app to the TV, installs it and starts it:
+
+```text
+[1/4] Checking the TV at 192.168.1.50
+      connected to UE49MU7400
+[2/4] Sending the package (1.3 MB)
+[3/4] Installing
+[4/4] Starting chiaki-tv
+
+Installed.
+Next: on your phone, open  http://192.168.1.50:8730  and enter the code shown on the TV.
+```
+
+### 4. Sign in from your phone
+
+![TV home screen](chiaki-tv/docs/screenshots/tv-home.png)
+
+1. The TV shows an address and a four-digit code. Open the address on your phone and enter the code.
+2. Tap **Open the Sony sign-in page** and sign in to PSN. Your password is typed only on Sony's page.
+3. Sony then shows a blank page whose address contains "redirect". Copy that whole address, go back, and paste it.
+4. Your PS5 appears in the list on the TV and on the phone.
+
+You sign in once. The TV keeps the session.
+
+### 5. Play
+
+Select the console on the TV and press OK. Connecting takes up to a minute while PSN wakes the console.
+
+For a controller, tap **Use this device as a controller** on the phone page. You get an on-screen controller, and a gamepad paired with the phone is passed through. On a computer the same page offers keyboard and mouse.
+
+During a stream:
+
+- **L1 + R1 + L3 + R3** opens the stream menu (Info on the TV remote, or the Menu button on the phone).
+- Holding **Back** on the TV remote asks whether to disconnect.
+
+### If something goes wrong
+
+| What you see | What to do |
+|---|---|
+| Installer: "Nothing answers at ..." | The TV is off, on another network, or the address is wrong. |
+| Installer: "The TV refused the connection" | Developer mode is off, or Host PC IP is not this computer. Fix it and restart the TV by holding the power button. |
+| Installer: "The TV did not install the package" | Your TV may not accept the signature of the released package. [Build from source](docs/BUILDING.md), which signs with your own certificate. |
+| TV shows "The module could not be loaded" | This TV has no Native Client, or a different CPU. chiaki-tv will not run on it. |
+| "Could not connect to the console" | Check that the PS5 is on or in rest mode, that Remote Play is enabled, and that "Stay Connected to the Internet" is on under Power Saving. Wait half a minute before retrying after a cancelled attempt. |
+| Picture freezes for a moment now and then | Turn off Low latency on the phone page's settings. |
+| Something else | Open the phone page, scroll to Diagnostics, tap Show log, and include it in an issue. |
+
+To update, download the new archive and run the installer again. To remove the app: `python3 install.py 192.168.1.50 --uninstall`.
+
 ## What it does
 
 - Connects to a PS5 through PSN remote connection. No port forwarding on the console side.
@@ -52,61 +135,9 @@ The TV's decoder returns a picture only after it holds as many frames as the str
 
 The PS5 sometimes sends a recovery frame that references a frame seven to nine back, usually after packet loss. With one reference frame the decoder no longer has it, so the client skips that frame and asks for a key frame. The picture can freeze briefly when that happens. The setting can be turned off on the setup page.
 
-## Building
+## Building from source
 
-Requirements:
-
-- A Samsung TV with developer mode enabled and this computer's address set as Host PC IP.
-- Samsung's Pepper 47 toolchain (`NaCl_SDK_v47f`) from the Samsung Developers site. Set `NACL_SDK_ROOT` to its `pepper_47` directory, or leave it at `~/Downloads/NaCl_SDK_v47f/pepper_47`.
-- Python 3 and OpenSSL.
-- Samsung's certificate generator files in `tv-probe/vendor/certgen`, used once to create a signing certificate.
-
-Third-party sources are not in this repository. `chiaki-tv/native/build.py` expects them under `chiaki-tv/vendor`:
-
-| Directory | Version |
-|---|---|
-| `chiaki-ng` | commit `43728af`, with its `third-party` submodules |
-| `nanopb` | 0.4.9.1 |
-| `jerasure`, `gf-complete` | the forks chiaki-ng uses |
-| `mbedtls` | 2.28.9 |
-| `opus` | 1.5.2 |
-| `json-c` | 0.17 |
-| `curl` | 8.10.1 |
-| `cacert.pem` | Mozilla CA bundle from curl.se |
-
-It also expects `protoc` 28.3 in `chiaki-tv/tools/host/protoc/bin` and a Python environment with `protobuf` 5.28.3 in `chiaki-tv/tools/host/venv`. A script that fetches all of this does not exist yet.
-
-Then, from `chiaki-tv`:
-
-```bash
-export TV_IP=192.168.1.50      # the TV's address
-python3 native/build.py        # dependencies and the module
-python3 tvbuild.py build       # signed package: build/ChiakiTv.wgt
-python3 tvbuild.py install
-python3 tvbuild.py launch
-```
-
-## Using it
-
-1. Open chiaki-tv on the TV. It shows an address and a code.
-2. Open the address on a phone on the same network and enter the code.
-3. Sign in to PSN from that page. Sony redirects to a blank page; copy its address and paste it back.
-4. Pick the console on the TV, or tap Connect on the phone.
-5. For a controller, tap "Use this device as a controller" on the phone. A gamepad paired with the phone or PC is forwarded too.
-
-During a stream, L1 + R1 + L3 + R3 opens the stream menu. On the TV remote, Info opens it and holding Back asks whether to disconnect.
-
-## Development tools
-
-All in `chiaki-tv/tools`:
-
-- `mockserver.py` serves the three interfaces without a TV.
-- `tvdebug.py` runs the app on the TV in debug mode, follows its log over UDP, measures latency and resolves crash addresses. The log, capture and measurement features need a module built with `CHIAKI_TV_DEBUG=1 python3 native/build.py`; the normal build leaves those endpoints out.
-- `padtest.py` checks the controller WebSocket on the TV.
-- `screenshots.py` regenerates the pictures in `chiaki-tv/docs/screenshots`.
-- `sfiscan.py` scans the module for instructions the Native Client validator rejects.
-
-Code comments and tool output are in Turkish.
+See [docs/BUILDING.md](docs/BUILDING.md). It also lists the development tools.
 
 ## License
 
