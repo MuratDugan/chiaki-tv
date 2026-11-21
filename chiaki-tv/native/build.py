@@ -54,7 +54,7 @@ def deps_fresh(obj, dep):
         t = os.path.getmtime(obj)
         text = open(dep).read().replace("\\\n", " ")
         for path in text.split(":", 1)[1].split():
-            if os.path.getmtime(path) > t:
+            if os.path.getmtime(os.path.join(ROOT, path)) > t:  # kaynak yolu ROOT'a gore yazili olabilir
                 return False
         return True
     except (OSError, IndexError):
@@ -65,14 +65,17 @@ def compile_one(job):
     src, obj, flags = job
     dep, sig = obj[:-2] + ".d", obj[:-2] + ".sig"
     cxx = src.endswith((".cc", ".cpp"))
-    cmd = [CXX if cxx else CC] + (CXXSTD if cxx else CSTD) + BASE + flags + ["-MMD", "-MF", dep, "-c", src, "-o", obj]
+    # Kaynak ROOT'a gore verilir ve derleyici ROOT'ta calisir: __FILE__ kullanan kutuphanelerin (mbedTLS) metinlerine
+    # derleyen makinenin klasor yolu girmesin, modul hangi klasorde derlenirse derlensin ayni ciksin.
+    cmd = ([CXX if cxx else CC] + (CXXSTD if cxx else CSTD) + BASE + flags +
+           ["-MMD", "-MF", dep, "-c", os.path.relpath(src, ROOT), "-o", obj])
     want = hashlib.sha1(" ".join(cmd).encode()).hexdigest()
     try:
         if open(sig).read() == want and deps_fresh(obj, dep):
             return None
     except OSError:
         pass
-    res = run(cmd)
+    res = run(cmd, cwd=ROOT)
     if res.returncode != 0:
         return src, res.stdout.decode(errors="replace")
     open(sig, "w").write(want)
